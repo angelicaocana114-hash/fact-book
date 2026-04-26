@@ -67,6 +67,13 @@ for insert
 to anon
 with check (true);
 
+drop policy if exists "factbook comments deletable" on public.factbook_comments;
+create policy "factbook comments deletable"
+on public.factbook_comments
+for delete
+to anon
+using (true);
+
 drop policy if exists "factbook reactions readable" on public.factbook_reactions;
 create policy "factbook reactions readable"
 on public.factbook_reactions
