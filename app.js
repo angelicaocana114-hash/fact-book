@@ -256,6 +256,29 @@ function renderComments() {
 
   const fragment = document.createDocumentFragment();
   state.comments.forEach((comment) => {
+    if (state.user && comment.profile_id === state.user.id) {
+      const article = document.createElement("article");
+      article.className = "comment-item owned";
+      article.innerHTML = `
+        <div class="comment-main">
+          <img class="comment-avatar" alt="Comment avatar" src="${escapeHtml(comment.avatar_data_url)}">
+          <div class="comment-bubble">
+            <strong class="comment-author"></strong>
+            <p class="comment-text"></p>
+          </div>
+        </div>
+        <button type="button" class="comment-delete-btn" data-comment-id="${escapeHtml(comment.id)}">Delete</button>
+      `;
+      article.querySelector(".comment-author").textContent = comment.display_name;
+      article.querySelector(".comment-text").textContent = comment.body_text;
+      article.querySelector(".comment-delete-btn").addEventListener("click", async () => {
+        await deleteComment(comment.id, state.user.id);
+        await refreshFeed();
+      });
+      fragment.appendChild(article);
+      return;
+    }
+
     const node = commentTemplate.content.cloneNode(true);
     node.querySelector(".comment-avatar").src = comment.avatar_data_url;
     node.querySelector(".comment-author").textContent = comment.display_name;
@@ -329,7 +352,16 @@ async function createComment(userId, text) {
 }
 
 async function listComments() {
-  return supabaseRequest(`/rest/v1/factbook_comments?post_id=eq.${encodeURIComponent(POST_ID)}&select=display_name,avatar_data_url,body_text,created_at&order=created_at.desc`);
+  return supabaseRequest(`/rest/v1/factbook_comments?post_id=eq.${encodeURIComponent(POST_ID)}&select=id,profile_id,display_name,avatar_data_url,body_text,created_at&order=created_at.desc`);
+}
+
+async function deleteComment(commentId, userId) {
+  return supabaseRequest(`/rest/v1/factbook_comments?id=eq.${encodeURIComponent(commentId)}&profile_id=eq.${encodeURIComponent(userId)}`, {
+    method: "DELETE",
+    headers: {
+      Prefer: "return=minimal"
+    }
+  }, true);
 }
 
 async function upsertReaction(userId, reaction) {
@@ -384,4 +416,12 @@ async function supabaseRequest(path, options = {}, allowEmpty = false) {
 
 function createId() {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
