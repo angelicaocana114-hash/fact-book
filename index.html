@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fact-Book</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <section class="auth-screen" id="authScreen">
+      <div class="auth-copy">
+        <div class="brand-row">
+          <div class="brand-badge">f</div>
+          <div>
+            <h1>Fact-Book</h1>
+            <p>Discuss ideas, challenge claims, and respond like a real social post.</p>
+          </div>
+        </div>
+        <div class="auth-preview">
+          <div class="preview-post">
+            <div class="preview-head">
+              <div class="preview-avatar"></div>
+              <div>
+                <strong>Fact-Book English Hub</strong>
+                <span>Opinion post simulation</span>
+              </div>
+            </div>
+            <p>"Grammar rules are useless because readers can guess the meaning anyway."</p>
+            <div class="preview-actions">
+              <span>React</span>
+              <span>Comment</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <form class="login-card" id="loginForm">
+        <h2>Sign in to Fact-Book</h2>
+        <label>
+          <span>Student name</span>
+          <input type="text" id="studentName" placeholder="Enter your name" required>
+        </label>
+        <label>
+          <span>Password</span>
+          <input type="password" id="studentPassword" placeholder="Enter any password" required>
+        </label>
+        <label class="file-field">
+          <span>Profile picture</span>
+          <input type="file" id="studentPhoto" accept="image/*" required>
+        </label>
+        <div class="photo-preview" id="photoPreview">
+          <span>No photo selected</span>
+        </div>
+        <button type="submit" class="primary-btn">Log In</button>
+        <p class="helper-text">Any name and password will continue. A profile picture is required for comments.</p>
+        <div class="qr-panel">
+          <div>
+            <strong>Join by QR</strong>
+            <p>Open this page on the teacher computer, then let students scan the code while connected to the same Wi-Fi.</p>
+          </div>
+          <img id="qrImage" alt="Fact-Book QR code">
+          <a id="qrLink" target="_blank" rel="noreferrer"></a>
+        </div>
+      </form>
+    </section>
+
+    <section class="feed-screen hidden" id="feedScreen">
+      <header class="topbar">
+        <div class="brand-row compact">
+          <div class="brand-badge">f</div>
+          <strong>Fact-Book</strong>
+        </div>
+        <div class="topbar-user">
+          <img id="topbarAvatar" alt="Student avatar">
+          <span id="topbarName"></span>
+        </div>
+      </header>
+
+      <main class="feed-layout">
+        <article class="post-card">
+          <div class="post-header">
+            <img id="postAvatar" alt="Student avatar">
+            <div>
+              <h2>English Debate Circle</h2>
+              <p>Shared for discussion • Just now</p>
+            </div>
+          </div>
+
+          <div class="post-body">
+            <p class="post-opinion">
+              "Correct grammar should not matter in academic writing because ideas are the only thing teachers should judge. Spelling, sentence structure, and punctuation never affect meaning, so students should ignore them."
+            </p>
+            <p class="post-caption">
+              React to the statement, then explain in the comments whether you agree or disagree and why.
+            </p>
+          </div>
+
+          <div class="post-stats">
+            <div class="reaction-summary">
+              <div class="reaction-icons-stack" id="reactionIconsStack">
+                <span class="mini-react like">👍</span>
+                <span class="mini-react love">❤️</span>
+                <span class="mini-react wow">😮</span>
+              </div>
+              <span id="reactionCount">0 reactions</span>
+            </div>
+            <span id="commentCount">0 comments</span>
+          </div>
+
+          <div class="post-actions">
+            <div class="react-wrap">
+              <button type="button" class="action-btn react-btn" id="reactButton">
+                <span id="currentReactionIcon">👍</span>
+                <span id="currentReactionLabel">React</span>
+              </button>
+              <div class="reaction-picker" id="reactionPicker">
+                <button type="button" class="picker-react" data-reaction="Like" data-emoji="👍">👍<span>Like</span></button>
+                <button type="button" class="picker-react" data-reaction="Love" data-emoji="❤️">❤️<span>Love</span></button>
+                <button type="button" class="picker-react" data-reaction="Care" data-emoji="🤗">🤗<span>Care</span></button>
+                <button type="button" class="picker-react" data-reaction="Haha" data-emoji="😂">😂<span>Haha</span></button>
+                <button type="button" class="picker-react" data-reaction="Wow" data-emoji="😮">😮<span>Wow</span></button>
+                <button type="button" class="picker-react" data-reaction="Sad" data-emoji="😢">😢<span>Sad</span></button>
+                <button type="button" class="picker-react" data-reaction="Angry" data-emoji="😡">😡<span>Angry</span></button>
+              </div>
+            </div>
+            <button type="button" class="action-btn" id="commentFocusButton">💬 Comment</button>
+          </div>
+
+          <div class="comment-composer">
+            <img id="composerAvatar" alt="Student avatar">
+            <form id="commentForm" class="comment-form">
+              <input type="text" id="commentInput" maxlength="220" placeholder="Write a comment about the claim..." required>
+              <button type="submit" class="primary-btn small">Post</button>
+            </form>
+          </div>
+
+          <div class="comment-list" id="commentList"></div>
+        </article>
+      </main>
+    </section>
+  </div>
+
+  <template id="commentTemplate">
+    <article class="comment-item">
+      <img class="comment-avatar" alt="Comment avatar">
+      <div class="comment-bubble">
+        <strong class="comment-author"></strong>
+        <p class="comment-text"></p>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
