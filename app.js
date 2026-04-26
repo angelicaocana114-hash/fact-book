@@ -1,427 +1,679 @@
-const SUPABASE_URL = "https://shbkmjnlluyozfyuooas.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_n5FhzL7k3mh1FSBKFnquFQ_2a_resGl";
-const POST_ID = "english-claim-1";
+:root {
+  --fb-blue: #1877f2;
+  --bg-top: #edf3ff;
+  --bg-bottom: #d8e4ff;
+  --card: rgba(255, 255, 255, 0.94);
+  --text: #162033;
+  --muted: #5d6a80;
+  --line: #d8dfea;
+  --shadow: 0 28px 60px rgba(37, 67, 128, 0.16);
+  --like: #1877f2;
+  --love: #f33e58;
+  --care: #f7b125;
+  --haha: #f7b125;
+  --wow: #f7b125;
+  --sad: #f7b125;
+  --angry: #e4602a;
+}
 
-const authScreen = document.getElementById("authScreen");
-const feedScreen = document.getElementById("feedScreen");
-const loginForm = document.getElementById("loginForm");
-const studentName = document.getElementById("studentName");
-const studentPassword = document.getElementById("studentPassword");
-const studentPhoto = document.getElementById("studentPhoto");
-const photoPreview = document.getElementById("photoPreview");
-const topbarAvatar = document.getElementById("topbarAvatar");
-const postAvatar = document.getElementById("postAvatar");
-const composerAvatar = document.getElementById("composerAvatar");
-const topbarName = document.getElementById("topbarName");
-const reactButton = document.getElementById("reactButton");
-const reactWrap = reactButton.parentElement;
-const reactionPicker = document.getElementById("reactionPicker");
-const currentReactionIcon = document.getElementById("currentReactionIcon");
-const currentReactionLabel = document.getElementById("currentReactionLabel");
-const reactionCount = document.getElementById("reactionCount");
-const commentCount = document.getElementById("commentCount");
-const commentForm = document.getElementById("commentForm");
-const commentInput = document.getElementById("commentInput");
-const commentList = document.getElementById("commentList");
-const commentTemplate = document.getElementById("commentTemplate");
-const commentFocusButton = document.getElementById("commentFocusButton");
-const reactionIconsStack = document.getElementById("reactionIconsStack");
-const qrImage = document.getElementById("qrImage");
-const qrLink = document.getElementById("qrLink");
+* {
+  box-sizing: border-box;
+}
 
-const reactionMeta = {
-  Like: { emoji: "👍", color: "#1877f2", className: "like" },
-  Love: { emoji: "❤️", color: "#f33e58", className: "love" },
-  Care: { emoji: "🤗", color: "#f7b125", className: "care" },
-  Haha: { emoji: "😂", color: "#f7b125", className: "haha" },
-  Wow: { emoji: "😮", color: "#f7b125", className: "wow" },
-  Sad: { emoji: "😢", color: "#f7b125", className: "sad" },
-  Angry: { emoji: "😡", color: "#e4602a", className: "angry" }
-};
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(24, 119, 242, 0.18), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(243, 62, 88, 0.14), transparent 24%),
+    linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+}
 
-const state = {
-  user: null,
-  refreshTimer: null,
-  comments: [],
-  reactions: {},
-  selectedReaction: null
-};
+button,
+input {
+  font: inherit;
+}
 
-studentPhoto.addEventListener("change", () => {
-  const [file] = studentPhoto.files;
-  if (!file) {
-    photoPreview.innerHTML = "<span>No photo selected</span>";
-    return;
+.hidden {
+  display: none;
+}
+
+.page-shell {
+  min-height: 100vh;
+}
+
+.auth-screen {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 32px;
+  align-items: center;
+  padding: 40px 6vw;
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.brand-row h1,
+.brand-row p,
+.brand-row strong {
+  margin: 0;
+}
+
+.brand-row p {
+  margin-top: 4px;
+  max-width: 520px;
+  color: var(--muted);
+  font-size: 1.1rem;
+}
+
+.compact p {
+  display: none;
+}
+
+.brand-badge {
+  width: 60px;
+  aspect-ratio: 1;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #2b87ff, #0b60d1);
+  color: #fff;
+  font-size: 2.4rem;
+  font-weight: 800;
+  box-shadow: 0 16px 34px rgba(24, 119, 242, 0.28);
+}
+
+.auth-copy {
+  display: grid;
+  gap: 28px;
+}
+
+.auth-preview {
+  max-width: 560px;
+}
+
+.preview-post,
+.login-card,
+.post-card {
+  background: var(--card);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+
+.preview-post {
+  padding: 24px;
+  animation: floatCard 4.8s ease-in-out infinite;
+}
+
+.preview-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.preview-head span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin-top: 3px;
+}
+
+.preview-avatar {
+  width: 48px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #97b6ed, #6b87b8);
+}
+
+.preview-post p {
+  margin: 0 0 18px;
+  font-size: 1.08rem;
+  line-height: 1.6;
+}
+
+.preview-actions {
+  display: flex;
+  justify-content: space-around;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.login-card {
+  justify-self: end;
+  width: min(420px, 100%);
+  padding: 26px;
+  display: grid;
+  gap: 16px;
+}
+
+.login-card h2 {
+  margin: 0 0 4px;
+  font-size: 1.55rem;
+}
+
+.login-card label {
+  display: grid;
+  gap: 8px;
+}
+
+.login-card span,
+.helper-text {
+  color: var(--muted);
+}
+
+.login-card input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 15px;
+  background: #fff;
+}
+
+.file-field input {
+  padding: 10px;
+}
+
+.photo-preview {
+  min-height: 120px;
+  border: 1px dashed #b9c7dc;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: rgba(244, 247, 253, 0.9);
+  color: var(--muted);
+}
+
+.photo-preview img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+}
+
+.qr-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #f7faff;
+}
+
+.qr-panel strong,
+.qr-panel p {
+  margin: 0;
+}
+
+.qr-panel p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.qr-panel img {
+  width: min(220px, 100%);
+  aspect-ratio: 1;
+  justify-self: center;
+  border-radius: 14px;
+  background: #fff;
+  padding: 8px;
+  border: 1px solid #d6dfef;
+}
+
+.qr-panel a {
+  color: var(--fb-blue);
+  text-decoration: none;
+  word-break: break-all;
+  font-size: 0.9rem;
+}
+
+.primary-btn {
+  border: 0;
+  border-radius: 12px;
+  padding: 14px 18px;
+  background: linear-gradient(180deg, #2382ff, #1366da);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+  box-shadow: 0 12px 28px rgba(24, 119, 242, 0.28);
+}
+
+.primary-btn:hover,
+.primary-btn:focus-visible {
+  transform: translateY(-1px);
+}
+
+.small {
+  padding: 11px 16px;
+}
+
+.feed-screen {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #edf3ff 0%, #ebf0f7 100%);
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(198, 211, 231, 0.75);
+}
+
+.topbar .brand-badge {
+  width: 42px;
+  border-radius: 13px;
+  font-size: 1.6rem;
+}
+
+.topbar-user,
+.post-header,
+.comment-composer,
+.comment-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topbar-user img,
+.post-header img,
+.comment-avatar,
+#composerAvatar,
+.comment-placeholder-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.topbar-user img,
+.post-header img,
+.comment-avatar,
+#composerAvatar {
+  object-fit: cover;
+}
+
+.comment-placeholder-icon {
+  display: grid;
+  place-items: center;
+  background: #e7eefb;
+  font-size: 1.1rem;
+}
+
+.feed-layout {
+  display: flex;
+  justify-content: center;
+  padding: 28px 14px 60px;
+}
+
+.post-card {
+  width: min(680px, 100%);
+  padding: 20px;
+  animation: riseIn 420ms ease;
+}
+
+.post-header h2,
+.post-header p,
+.post-body p,
+.comment-bubble p {
+  margin: 0;
+}
+
+.post-header h2 {
+  font-size: 1.08rem;
+}
+
+.post-header p,
+.post-caption,
+.helper-text {
+  font-size: 0.95rem;
+}
+
+.post-header p,
+.post-caption,
+.post-stats,
+.comment-bubble p,
+.helper-text {
+  color: var(--muted);
+}
+
+.post-body {
+  padding: 18px 0 10px;
+}
+
+.post-opinion {
+  font-size: clamp(1.08rem, 1.8vw, 1.25rem);
+  line-height: 1.7;
+  margin-bottom: 14px;
+}
+
+.post-caption {
+  line-height: 1.6;
+}
+
+.post-stats,
+.post-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.post-stats {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+
+.reaction-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reaction-icons-stack {
+  display: flex;
+}
+
+.mini-react {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  border: 2px solid #fff;
+  margin-left: -6px;
+  font-size: 0.8rem;
+}
+
+.mini-react:first-child {
+  margin-left: 0;
+}
+
+.mini-react.like {
+  background: var(--like);
+}
+
+.mini-react.love {
+  background: var(--love);
+}
+
+.mini-react.wow {
+  background: var(--wow);
+}
+
+.post-actions {
+  position: relative;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.react-wrap {
+  position: relative;
+}
+
+.action-btn {
+  width: 160px;
+  max-width: 100%;
+  border: 0;
+  background: transparent;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #5c6778;
+  cursor: pointer;
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.action-btn:hover,
+.action-btn:focus-visible {
+  background: #f0f4fb;
+}
+
+.reaction-picker {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 12px);
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(210, 220, 235, 0.9);
+  box-shadow: 0 14px 30px rgba(16, 37, 77, 0.16);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px) scale(0.96);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.react-wrap.open .reaction-picker {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.picker-react {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  font-size: 1.6rem;
+  transition: transform 180ms ease;
+}
+
+.picker-react span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #536173;
+}
+
+.picker-react:hover,
+.picker-react:focus-visible {
+  transform: translateY(-8px) scale(1.08);
+}
+
+.comment-composer {
+  padding-top: 16px;
+  align-items: flex-start;
+}
+
+.comment-form {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.comment-form input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 13px 16px;
+  background: #f4f7fb;
+}
+
+.comment-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.comment-item {
+  align-items: flex-start;
+}
+
+.comment-bubble {
+  background: #f0f3f8;
+  padding: 12px 14px;
+  border-radius: 18px;
+  max-width: min(100%, 530px);
+}
+
+.comment-author {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.comment-item.owned {
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.comment-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.comment-delete-btn {
+  border: 0;
+  background: transparent;
+  color: #7b8798;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 10px;
+  padding: 8px 10px;
+  transition: background 180ms ease, color 180ms ease;
+}
+
+.comment-delete-btn:hover,
+.comment-delete-btn:focus-visible {
+  background: #eef3fb;
+  color: #c73854;
+}
+
+.reaction-burst {
+  position: fixed;
+  left: 50%;
+  top: 45%;
+  transform: translate(-50%, -50%);
+  font-size: 4rem;
+  pointer-events: none;
+  animation: burst 640ms ease forwards;
+  z-index: 20;
+}
+
+@keyframes burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -20%) scale(0.4);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -88%) scale(0.95);
+  }
+}
+
+@keyframes floatCard {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 900px) {
+  .auth-screen {
+    grid-template-columns: 1fr;
+    padding: 26px 16px 36px;
   }
 
-  const reader = new FileReader();
-  reader.onload = () => {
-    photoPreview.innerHTML = `<img src="${reader.result}" alt="Selected profile preview">`;
-  };
-  reader.readAsDataURL(file);
-});
-
-loginForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-
-  const name = studentName.value.trim();
-  const password = studentPassword.value.trim();
-  const [file] = studentPhoto.files;
-
-  if (!name || !password || !file) {
-    return;
+  .login-card {
+    justify-self: stretch;
   }
 
-  const avatar = await readFileAsDataUrl(file);
-  const existingId = window.localStorage.getItem("factbookUserId");
-  const userId = existingId || createId();
-  const user = {
-    id: userId,
-    display_name: name.slice(0, 60),
-    password_hint: password.slice(0, 60),
-    avatar_data_url: avatar
-  };
-
-  await upsertProfile(user);
-  state.user = {
-    id: user.id,
-    name: user.display_name,
-    avatar: user.avatar_data_url
-  };
-
-  window.localStorage.setItem("factbookUserId", user.id);
-  studentPassword.value = "";
-  showFeed();
-  await refreshFeed();
-});
-
-reactButton.addEventListener("click", () => {
-  if (!state.user) {
-    return;
-  }
-  reactWrap.classList.toggle("open");
-});
-
-reactionPicker.querySelectorAll(".picker-react").forEach((button) => {
-  button.addEventListener("click", async () => {
-    if (!state.user) {
-      return;
-    }
-
-    const reaction = button.dataset.reaction;
-    await upsertReaction(state.user.id, reaction);
-    reactWrap.classList.remove("open");
-    spawnReactionBurst(reactionMeta[reaction].emoji);
-    await refreshFeed();
-  });
-});
-
-document.addEventListener("click", (event) => {
-  if (!reactWrap.contains(event.target)) {
-    reactWrap.classList.remove("open");
-  }
-});
-
-commentFocusButton.addEventListener("click", () => {
-  commentInput.focus();
-});
-
-commentForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (!state.user) {
-    return;
-  }
-
-  const text = commentInput.value.trim();
-  if (!text) {
-    return;
-  }
-
-  await createComment(state.user.id, text);
-  commentInput.value = "";
-  await refreshFeed();
-});
-
-window.addEventListener("load", async () => {
-  renderQrCode();
-
-  const savedUserId = window.localStorage.getItem("factbookUserId");
-  if (!savedUserId) {
-    return;
-  }
-
-  try {
-    const profile = await getProfile(savedUserId);
-    if (!profile) {
-      window.localStorage.removeItem("factbookUserId");
-      return;
-    }
-
-    state.user = {
-      id: profile.id,
-      name: profile.display_name,
-      avatar: profile.avatar_data_url
-    };
-    showFeed();
-    await refreshFeed();
-  } catch {
-    window.localStorage.removeItem("factbookUserId");
-  }
-});
-
-async function refreshFeed() {
-  const [comments, reactions, ownReaction] = await Promise.all([
-    listComments(),
-    listReactions(),
-    state.user ? getOwnReaction(state.user.id) : Promise.resolve(null)
-  ]);
-
-  state.comments = comments;
-  state.reactions = reactions;
-  state.selectedReaction = ownReaction;
-  renderReactionState();
-  renderComments();
-}
-
-function showFeed() {
-  authScreen.classList.add("hidden");
-  feedScreen.classList.remove("hidden");
-  topbarName.textContent = state.user.name;
-
-  [topbarAvatar, postAvatar, composerAvatar].forEach((image) => {
-    image.src = state.user.avatar;
-  });
-
-  if (!state.refreshTimer) {
-    state.refreshTimer = window.setInterval(() => {
-      refreshFeed().catch(() => {});
-    }, 4000);
+  .feed-layout {
+    padding-inline: 8px;
   }
 }
 
-function renderReactionState() {
-  const totals = Object.entries(state.reactions).sort((left, right) => right[1] - left[1]);
-  const totalCount = totals.reduce((sum, entry) => sum + entry[1], 0);
-
-  reactionIconsStack.innerHTML = "";
-  totals.slice(0, 3).forEach(([name]) => {
-    const meta = reactionMeta[name];
-    const chip = document.createElement("span");
-    chip.className = `mini-react ${meta.className}`;
-    chip.textContent = meta.emoji;
-    reactionIconsStack.appendChild(chip);
-  });
-
-  if (!totals.length) {
-    ["Like", "Love", "Wow"].forEach((name) => {
-      const meta = reactionMeta[name];
-      const chip = document.createElement("span");
-      chip.className = `mini-react ${meta.className}`;
-      chip.textContent = meta.emoji;
-      reactionIconsStack.appendChild(chip);
-    });
+@media (max-width: 640px) {
+  .brand-row h1 {
+    font-size: 2rem;
   }
 
-  reactionCount.textContent = totalCount === 0 ? "0 reactions" : `${totalCount} reaction${totalCount === 1 ? "" : "s"}`;
-  commentCount.textContent = `${state.comments.length} comment${state.comments.length === 1 ? "" : "s"}`;
-
-  if (!state.selectedReaction) {
-    currentReactionIcon.textContent = "👍";
-    currentReactionLabel.textContent = "React";
-    reactButton.style.color = "#5c6778";
-    return;
+  .brand-row p {
+    font-size: 1rem;
   }
 
-  const meta = reactionMeta[state.selectedReaction];
-  currentReactionIcon.textContent = meta.emoji;
-  currentReactionLabel.textContent = state.selectedReaction;
-  reactButton.style.color = meta.color;
-}
-
-function renderComments() {
-  commentList.innerHTML = "";
-
-  if (!state.comments.length) {
-    commentList.innerHTML = `
-      <article class="comment-item">
-        <div class="comment-placeholder-icon">💬</div>
-        <div class="comment-bubble">
-          <strong class="comment-author">Start the discussion</strong>
-          <p>Use the comment box to explain why the statement is right or wrong.</p>
-        </div>
-      </article>
-    `;
-    return;
+  .preview-post,
+  .login-card,
+  .post-card {
+    border-radius: 16px;
   }
 
-  const fragment = document.createDocumentFragment();
-  state.comments.forEach((comment) => {
-    if (state.user && comment.profile_id === state.user.id) {
-      const article = document.createElement("article");
-      article.className = "comment-item owned";
-      article.innerHTML = `
-        <div class="comment-main">
-          <img class="comment-avatar" alt="Comment avatar" src="${escapeHtml(comment.avatar_data_url)}">
-          <div class="comment-bubble">
-            <strong class="comment-author"></strong>
-            <p class="comment-text"></p>
-          </div>
-        </div>
-        <button type="button" class="comment-delete-btn" data-comment-id="${escapeHtml(comment.id)}">Delete</button>
-      `;
-      article.querySelector(".comment-author").textContent = comment.display_name;
-      article.querySelector(".comment-text").textContent = comment.body_text;
-      article.querySelector(".comment-delete-btn").addEventListener("click", async () => {
-        await deleteComment(comment.id, state.user.id);
-        await refreshFeed();
-      });
-      fragment.appendChild(article);
-      return;
-    }
-
-    const node = commentTemplate.content.cloneNode(true);
-    node.querySelector(".comment-avatar").src = comment.avatar_data_url;
-    node.querySelector(".comment-author").textContent = comment.display_name;
-    node.querySelector(".comment-text").textContent = comment.body_text;
-    fragment.appendChild(node);
-  });
-
-  commentList.appendChild(fragment);
-}
-
-function renderQrCode() {
-  if (!qrImage || !qrLink) {
-    return;
+  .topbar {
+    padding-inline: 12px;
   }
 
-  const targetUrl = window.location.href;
-  qrLink.textContent = targetUrl;
-  qrLink.href = targetUrl;
-  qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(targetUrl)}`;
-}
-
-function spawnReactionBurst(emoji) {
-  const burst = document.createElement("div");
-  burst.className = "reaction-burst";
-  burst.textContent = emoji;
-  document.body.appendChild(burst);
-  window.setTimeout(() => burst.remove(), 650);
-}
-
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
-async function upsertProfile(profile) {
-  return supabaseRequest("/rest/v1/factbook_profiles", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Prefer: "resolution=merge-duplicates,return=representation"
-    },
-    body: JSON.stringify(profile)
-  }, true);
-}
-
-async function getProfile(userId) {
-  const rows = await supabaseRequest(`/rest/v1/factbook_profiles?id=eq.${encodeURIComponent(userId)}&select=*`);
-  return rows[0] || null;
-}
-
-async function createComment(userId, text) {
-  return supabaseRequest("/rest/v1/factbook_comments", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Prefer: "return=minimal"
-    },
-    body: JSON.stringify({
-      id: createId(),
-      post_id: POST_ID,
-      profile_id: userId,
-      display_name: state.user.name,
-      avatar_data_url: state.user.avatar,
-      body_text: text.slice(0, 220)
-    })
-  }, true);
-}
-
-async function listComments() {
-  return supabaseRequest(`/rest/v1/factbook_comments?post_id=eq.${encodeURIComponent(POST_ID)}&select=id,profile_id,display_name,avatar_data_url,body_text,created_at&order=created_at.desc`);
-}
-
-async function deleteComment(commentId, userId) {
-  return supabaseRequest(`/rest/v1/factbook_comments?id=eq.${encodeURIComponent(commentId)}&profile_id=eq.${encodeURIComponent(userId)}`, {
-    method: "DELETE",
-    headers: {
-      Prefer: "return=minimal"
-    }
-  }, true);
-}
-
-async function upsertReaction(userId, reaction) {
-  return supabaseRequest("/rest/v1/factbook_reactions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Prefer: "resolution=merge-duplicates,return=representation"
-    },
-    body: JSON.stringify({
-      id: createId(),
-      post_id: POST_ID,
-      profile_id: userId,
-      reaction_name: reaction
-    })
-  }, true);
-}
-
-async function getOwnReaction(userId) {
-  const rows = await supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&profile_id=eq.${encodeURIComponent(userId)}&select=reaction_name`);
-  return rows[0] ? rows[0].reaction_name : null;
-}
-
-async function listReactions() {
-  const rows = await supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&select=reaction_name`);
-  return rows.reduce((summary, row) => {
-    summary[row.reaction_name] = (summary[row.reaction_name] || 0) + 1;
-    return summary;
-  }, {});
-}
-
-async function supabaseRequest(path, options = {}, allowEmpty = false) {
-  const response = await fetch(`${SUPABASE_URL}${path}`, {
-    ...options,
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      ...(options.headers || {})
-    }
-  });
-
-  if (!response.ok) {
-    if (allowEmpty && response.status === 204) {
-      return [];
-    }
-    throw new Error(`Supabase request failed: ${response.status}`);
+  .post-card {
+    padding: 16px;
   }
 
-  const text = await response.text();
-  return text ? JSON.parse(text) : [];
-}
+  .post-actions {
+    gap: 8px;
+  }
 
-function createId() {
-  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 9)}`;
-}
+  .action-btn {
+    width: auto;
+    flex: 1 1 0;
+    padding-inline: 8px;
+  }
 
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+  .reaction-picker {
+    left: -10px;
+    right: auto;
+    width: min(92vw, 360px);
+    overflow-x: auto;
+  }
+
+  .comment-form {
+    flex-direction: column;
+  }
+
+  .primary-btn.small {
+    width: 100%;
+  }
 }
