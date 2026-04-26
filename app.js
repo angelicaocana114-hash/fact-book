@@ -295,23 +295,14 @@ function readFileAsDataUrl(file) {
 }
 
 async function upsertProfile(profile) {
-  return supabaseRequest(`/rest/v1/factbook_profiles?id=eq.${encodeURIComponent(profile.id)}`, {
-    method: "PATCH",
+  return supabaseRequest("/rest/v1/factbook_profiles", {
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Prefer: "return=representation"
+      Prefer: "resolution=merge-duplicates,return=representation"
     },
     body: JSON.stringify(profile)
-  }, true).catch(async () => {
-    return supabaseRequest("/rest/v1/factbook_profiles", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Prefer: "return=representation"
-      },
-      body: JSON.stringify(profile)
-    }, true);
-  });
+  }, true);
 }
 
 async function getProfile(userId) {
@@ -342,28 +333,19 @@ async function listComments() {
 }
 
 async function upsertReaction(userId, reaction) {
-  return supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&profile_id=eq.${encodeURIComponent(userId)}`, {
-    method: "PATCH",
+  return supabaseRequest("/rest/v1/factbook_reactions", {
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Prefer: "return=representation"
+      Prefer: "resolution=merge-duplicates,return=representation"
     },
-    body: JSON.stringify({ reaction_name: reaction })
-  }, true).catch(async () => {
-    return supabaseRequest("/rest/v1/factbook_reactions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Prefer: "return=minimal"
-      },
-      body: JSON.stringify({
-        id: createId(),
-        post_id: POST_ID,
-        profile_id: userId,
-        reaction_name: reaction
-      })
-    }, true);
-  });
+    body: JSON.stringify({
+      id: createId(),
+      post_id: POST_ID,
+      profile_id: userId,
+      reaction_name: reaction
+    })
+  }, true);
 }
 
 async function getOwnReaction(userId) {
