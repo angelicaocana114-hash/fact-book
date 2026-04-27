@@ -35,15 +35,15 @@
         </div>
       </div>
 
-      <form class="login-card" id="loginForm">
+      <form class="login-card" id="loginForm" autocomplete="off">
         <h2>Sign in to Fact-Book</h2>
         <label>
           <span>Student name</span>
-          <input type="text" id="studentName" placeholder="Enter your name" required>
+          <input type="text" id="studentName" placeholder="Enter your name" autocomplete="off" required>
         </label>
         <label>
           <span>Password</span>
-          <input type="password" id="studentPassword" placeholder="Enter any password" required>
+          <input type="password" id="studentPassword" placeholder="Enter any password" autocomplete="new-password" required>
         </label>
         <label class="file-field">
           <span>Profile picture</span>
@@ -74,6 +74,7 @@
         <div class="topbar-user">
           <img id="topbarAvatar" alt="Student avatar">
           <span id="topbarName"></span>
+          <button type="button" class="ghost-btn" id="logoutButton">Log out</button>
         </div>
       </header>
 
@@ -125,6 +126,7 @@
               </div>
             </div>
             <button type="button" class="action-btn" id="commentFocusButton">💬 Comment</button>
+            <button type="button" class="action-btn" id="shareButton">↗ Share</button>
           </div>
 
           <div class="comment-composer">
