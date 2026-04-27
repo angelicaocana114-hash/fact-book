@@ -563,6 +563,10 @@ input {
   padding: 16px;
 }
 
+.modal-shell.hidden {
+  display: none;
+}
+
 .modal-backdrop {
   position: absolute;
   inset: 0;
