@@ -98,14 +98,14 @@
           </div>
 
           <div class="post-stats">
-            <div class="reaction-summary">
+            <button type="button" class="reaction-summary reaction-summary-btn" id="reactionSummaryButton">
               <div class="reaction-icons-stack" id="reactionIconsStack">
                 <span class="mini-react like">👍</span>
                 <span class="mini-react love">❤️</span>
                 <span class="mini-react wow">😮</span>
               </div>
               <span id="reactionCount">0 reactions</span>
-            </div>
+            </button>
             <span id="commentCount">0 comments</span>
           </div>
 
@@ -152,6 +152,18 @@
       </div>
     </article>
   </template>
+
+  <section class="modal-shell hidden" id="reactionModal">
+    <div class="modal-backdrop" id="reactionModalBackdrop"></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>People who reacted</h3>
+        <button type="button" class="modal-close" id="reactionModalClose">×</button>
+      </div>
+      <div class="reaction-filter-row" id="reactionFilterRow"></div>
+      <div class="reaction-modal-list" id="reactionModalList"></div>
+    </div>
+  </section>
 
   <script src="app.js"></script>
 </body>
