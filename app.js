@@ -25,9 +25,11 @@ const commentInput = document.getElementById("commentInput");
 const commentList = document.getElementById("commentList");
 const commentTemplate = document.getElementById("commentTemplate");
 const commentFocusButton = document.getElementById("commentFocusButton");
+const shareButton = document.getElementById("shareButton");
 const reactionIconsStack = document.getElementById("reactionIconsStack");
 const qrImage = document.getElementById("qrImage");
 const qrLink = document.getElementById("qrLink");
+const logoutButton = document.getElementById("logoutButton");
 
 const reactionMeta = {
   Like: { emoji: "👍", color: "#1877f2", className: "like" },
@@ -73,8 +75,7 @@ loginForm.addEventListener("submit", async (event) => {
   }
 
   const avatar = await readFileAsDataUrl(file);
-  const existingId = window.localStorage.getItem("factbookUserId");
-  const userId = existingId || createId();
+  const userId = createId();
   const user = {
     id: userId,
     display_name: name.slice(0, 60),
@@ -89,8 +90,7 @@ loginForm.addEventListener("submit", async (event) => {
     avatar: user.avatar_data_url
   };
 
-  window.localStorage.setItem("factbookUserId", user.id);
-  studentPassword.value = "";
+  clearLoginForm();
   showFeed();
   await refreshFeed();
 });
@@ -126,6 +126,33 @@ commentFocusButton.addEventListener("click", () => {
   commentInput.focus();
 });
 
+shareButton.addEventListener("click", async () => {
+  const shareUrl = window.location.href;
+  const shareText = "Join the discussion on Fact-Book.";
+
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: "Fact-Book",
+        text: shareText,
+        url: shareUrl
+      });
+    } else if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(shareUrl);
+    } else {
+      copyWithTextarea(shareUrl);
+    }
+
+    pulseShareButton("Shared");
+  } catch {
+    pulseShareButton("Share");
+  }
+});
+
+logoutButton.addEventListener("click", () => {
+  resetSession();
+});
+
 commentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!state.user) {
@@ -144,29 +171,7 @@ commentForm.addEventListener("submit", async (event) => {
 
 window.addEventListener("load", async () => {
   renderQrCode();
-
-  const savedUserId = window.localStorage.getItem("factbookUserId");
-  if (!savedUserId) {
-    return;
-  }
-
-  try {
-    const profile = await getProfile(savedUserId);
-    if (!profile) {
-      window.localStorage.removeItem("factbookUserId");
-      return;
-    }
-
-    state.user = {
-      id: profile.id,
-      name: profile.display_name,
-      avatar: profile.avatar_data_url
-    };
-    showFeed();
-    await refreshFeed();
-  } catch {
-    window.localStorage.removeItem("factbookUserId");
-  }
+  resetSession(true);
 });
 
 async function refreshFeed() {
@@ -196,6 +201,28 @@ function showFeed() {
     state.refreshTimer = window.setInterval(() => {
       refreshFeed().catch(() => {});
     }, 4000);
+  }
+}
+
+function resetSession(isInitialLoad = false) {
+  state.user = null;
+  state.selectedReaction = null;
+  if (state.refreshTimer) {
+    window.clearInterval(state.refreshTimer);
+    state.refreshTimer = null;
+  }
+
+  feedScreen.classList.add("hidden");
+  authScreen.classList.remove("hidden");
+  clearLoginForm();
+  reactWrap.classList.remove("open");
+  reactButton.style.color = "#5c6778";
+
+  if (!isInitialLoad) {
+    topbarName.textContent = "";
+    topbarAvatar.removeAttribute("src");
+    postAvatar.removeAttribute("src");
+    composerAvatar.removeAttribute("src");
   }
 }
 
@@ -304,6 +331,11 @@ function renderQrCode() {
   };
 }
 
+function clearLoginForm() {
+  loginForm.reset();
+  photoPreview.innerHTML = "<span>No photo selected</span>";
+}
+
 function spawnReactionBurst(emoji) {
   const burst = document.createElement("div");
   burst.className = "reaction-burst";
@@ -369,14 +401,14 @@ async function deleteComment(commentId, userId) {
 }
 
 async function upsertReaction(userId, reaction) {
-  return supabaseRequest("/rest/v1/factbook_reactions", {
+  return supabaseRequest(`/rest/v1/factbook_reactions?on_conflict=post_id,profile_id`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Prefer: "resolution=merge-duplicates,return=representation"
     },
     body: JSON.stringify({
-      id: createId(),
+      id: `${POST_ID}-${userId}`,
       post_id: POST_ID,
       profile_id: userId,
       reaction_name: reaction
@@ -428,4 +460,26 @@ function escapeHtml(value) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+function pulseShareButton(label) {
+  const original = shareButton.innerHTML;
+  shareButton.textContent = label;
+  shareButton.style.color = "#1877f2";
+  window.setTimeout(() => {
+    shareButton.innerHTML = original;
+    shareButton.style.color = "";
+  }, 1600);
+}
+
+function copyWithTextarea(value) {
+  const helper = document.createElement("textarea");
+  helper.value = value;
+  helper.setAttribute("readonly", "");
+  helper.style.position = "absolute";
+  helper.style.left = "-9999px";
+  document.body.appendChild(helper);
+  helper.select();
+  document.execCommand("copy");
+  helper.remove();
 }
