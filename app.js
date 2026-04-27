@@ -13,12 +13,14 @@ const topbarAvatar = document.getElementById("topbarAvatar");
 const postAvatar = document.getElementById("postAvatar");
 const composerAvatar = document.getElementById("composerAvatar");
 const topbarName = document.getElementById("topbarName");
+const logoutButton = document.getElementById("logoutButton");
 const reactButton = document.getElementById("reactButton");
 const reactWrap = reactButton.parentElement;
 const reactionPicker = document.getElementById("reactionPicker");
 const currentReactionIcon = document.getElementById("currentReactionIcon");
 const currentReactionLabel = document.getElementById("currentReactionLabel");
 const reactionCount = document.getElementById("reactionCount");
+const reactionSummaryButton = document.getElementById("reactionSummaryButton");
 const commentCount = document.getElementById("commentCount");
 const commentForm = document.getElementById("commentForm");
 const commentInput = document.getElementById("commentInput");
@@ -29,7 +31,11 @@ const shareButton = document.getElementById("shareButton");
 const reactionIconsStack = document.getElementById("reactionIconsStack");
 const qrImage = document.getElementById("qrImage");
 const qrLink = document.getElementById("qrLink");
-const logoutButton = document.getElementById("logoutButton");
+const reactionModal = document.getElementById("reactionModal");
+const reactionModalBackdrop = document.getElementById("reactionModalBackdrop");
+const reactionModalClose = document.getElementById("reactionModalClose");
+const reactionModalList = document.getElementById("reactionModalList");
+const reactionFilterRow = document.getElementById("reactionFilterRow");
 
 const reactionMeta = {
   Like: { emoji: "👍", color: "#1877f2", className: "like" },
@@ -46,7 +52,9 @@ const state = {
   refreshTimer: null,
   comments: [],
   reactions: {},
-  selectedReaction: null
+  selectedReaction: null,
+  reactionPeople: [],
+  activeReactionFilter: "All"
 };
 
 studentPhoto.addEventListener("change", () => {
@@ -109,7 +117,11 @@ reactionPicker.querySelectorAll(".picker-react").forEach((button) => {
     }
 
     const reaction = button.dataset.reaction;
-    await upsertReaction(state.user.id, reaction);
+    if (state.selectedReaction === reaction) {
+      await deleteReaction(state.user.id);
+    } else {
+      await upsertReaction(state.user.id, reaction);
+    }
     reactWrap.classList.remove("open");
     spawnReactionBurst(reactionMeta[reaction].emoji);
     await refreshFeed();
@@ -153,6 +165,13 @@ logoutButton.addEventListener("click", () => {
   resetSession();
 });
 
+reactionSummaryButton.addEventListener("click", () => {
+  openReactionModal();
+});
+
+reactionModalClose.addEventListener("click", closeReactionModal);
+reactionModalBackdrop.addEventListener("click", closeReactionModal);
+
 commentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!state.user) {
@@ -169,23 +188,32 @@ commentForm.addEventListener("submit", async (event) => {
   await refreshFeed();
 });
 
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeReactionModal();
+  }
+});
+
 window.addEventListener("load", async () => {
   renderQrCode();
   resetSession(true);
 });
 
 async function refreshFeed() {
-  const [comments, reactions, ownReaction] = await Promise.all([
+  const [comments, reactions, ownReaction, reactionPeople] = await Promise.all([
     listComments(),
     listReactions(),
-    state.user ? getOwnReaction(state.user.id) : Promise.resolve(null)
+    state.user ? getOwnReaction(state.user.id) : Promise.resolve(null),
+    listReactionPeople()
   ]);
 
   state.comments = comments;
   state.reactions = reactions;
   state.selectedReaction = ownReaction;
+  state.reactionPeople = reactionPeople;
   renderReactionState();
   renderComments();
+  renderReactionModal();
 }
 
 function showFeed() {
@@ -207,6 +235,11 @@ function showFeed() {
 function resetSession(isInitialLoad = false) {
   state.user = null;
   state.selectedReaction = null;
+  state.comments = [];
+  state.reactions = {};
+  state.reactionPeople = [];
+  state.activeReactionFilter = "All";
+
   if (state.refreshTimer) {
     window.clearInterval(state.refreshTimer);
     state.refreshTimer = null;
@@ -216,13 +249,25 @@ function resetSession(isInitialLoad = false) {
   authScreen.classList.remove("hidden");
   clearLoginForm();
   reactWrap.classList.remove("open");
+  closeReactionModal();
+  reactionCount.textContent = "0 reactions";
+  commentCount.textContent = "0 comments";
+  currentReactionIcon.textContent = "👍";
+  currentReactionLabel.textContent = "React";
   reactButton.style.color = "#5c6778";
+
+  reactionIconsStack.innerHTML = `
+    <span class="mini-react like">👍</span>
+    <span class="mini-react love">❤️</span>
+    <span class="mini-react wow">😮</span>
+  `;
 
   if (!isInitialLoad) {
     topbarName.textContent = "";
     topbarAvatar.removeAttribute("src");
     postAvatar.removeAttribute("src");
     composerAvatar.removeAttribute("src");
+    commentList.innerHTML = "";
   }
 }
 
@@ -263,6 +308,67 @@ function renderReactionState() {
   currentReactionIcon.textContent = meta.emoji;
   currentReactionLabel.textContent = state.selectedReaction;
   reactButton.style.color = meta.color;
+}
+
+function renderReactionModal() {
+  const totals = [
+    { name: "All", count: state.reactionPeople.length, emoji: "All" },
+    ...Object.entries(state.reactions)
+      .sort((left, right) => right[1] - left[1])
+      .map(([name, count]) => ({ name, count, emoji: reactionMeta[name].emoji }))
+  ];
+
+  reactionFilterRow.innerHTML = "";
+  totals.forEach((entry) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `reaction-filter-btn${state.activeReactionFilter === entry.name ? " active" : ""}`;
+    button.textContent = `${entry.emoji} ${entry.count}`;
+    button.addEventListener("click", () => {
+      state.activeReactionFilter = entry.name;
+      renderReactionModal();
+    });
+    reactionFilterRow.appendChild(button);
+  });
+
+  const visiblePeople = state.activeReactionFilter === "All"
+    ? state.reactionPeople
+    : state.reactionPeople.filter((person) => person.reaction_name === state.activeReactionFilter);
+
+  reactionModalList.innerHTML = "";
+
+  if (!visiblePeople.length) {
+    reactionModalList.innerHTML = `<div class="reaction-empty">No reactions to show for this filter yet.</div>`;
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  visiblePeople.forEach((person) => {
+    const row = document.createElement("article");
+    row.className = "reaction-person";
+    row.innerHTML = `
+      <div class="reaction-person-main">
+        <img src="${escapeHtml(person.avatar_data_url)}" alt="Reaction avatar">
+        <div class="reaction-person-meta">
+          <strong>${escapeHtml(person.display_name)}</strong>
+          <span>reacted with ${escapeHtml(person.reaction_name)}</span>
+        </div>
+      </div>
+      <div class="reaction-person-icon">${reactionMeta[person.reaction_name]?.emoji || "👍"}</div>
+    `;
+    fragment.appendChild(row);
+  });
+
+  reactionModalList.appendChild(fragment);
+}
+
+function openReactionModal() {
+  renderReactionModal();
+  reactionModal.classList.remove("hidden");
+}
+
+function closeReactionModal() {
+  reactionModal.classList.add("hidden");
 }
 
 function renderComments() {
@@ -364,9 +470,9 @@ async function upsertProfile(profile) {
   }, true);
 }
 
-async function getProfile(userId) {
-  const rows = await supabaseRequest(`/rest/v1/factbook_profiles?id=eq.${encodeURIComponent(userId)}&select=*`);
-  return rows[0] || null;
+async function getOwnReaction(userId) {
+  const rows = await supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&profile_id=eq.${encodeURIComponent(userId)}&select=reaction_name`);
+  return rows[0] ? rows[0].reaction_name : null;
 }
 
 async function createComment(userId, text) {
@@ -416,9 +522,13 @@ async function upsertReaction(userId, reaction) {
   }, true);
 }
 
-async function getOwnReaction(userId) {
-  const rows = await supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&profile_id=eq.${encodeURIComponent(userId)}&select=reaction_name`);
-  return rows[0] ? rows[0].reaction_name : null;
+async function deleteReaction(userId) {
+  return supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&profile_id=eq.${encodeURIComponent(userId)}`, {
+    method: "DELETE",
+    headers: {
+      Prefer: "return=minimal"
+    }
+  }, true);
 }
 
 async function listReactions() {
@@ -427,6 +537,16 @@ async function listReactions() {
     summary[row.reaction_name] = (summary[row.reaction_name] || 0) + 1;
     return summary;
   }, {});
+}
+
+async function listReactionPeople() {
+  const rows = await supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&select=reaction_name,created_at,factbook_profiles(display_name,avatar_data_url)&order=created_at.desc`);
+  return rows.map((row) => ({
+    reaction_name: row.reaction_name,
+    display_name: row.factbook_profiles?.display_name || "Student",
+    avatar_data_url: row.factbook_profiles?.avatar_data_url || "",
+    created_at: row.created_at
+  }));
 }
 
 async function supabaseRequest(path, options = {}, allowEmpty = false) {
