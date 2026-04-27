@@ -430,11 +430,27 @@ function renderQrCode() {
   const targetUrl = window.location.href;
   qrLink.textContent = targetUrl;
   qrLink.href = targetUrl;
-  qrImage.src = `https://quickchart.io/qr?size=220&text=${encodeURIComponent(targetUrl)}`;
+  qrImage.style.display = "";
+
+  const qrSources = [
+    `https://quickchart.io/qr?size=220&text=${encodeURIComponent(targetUrl)}`,
+    `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(targetUrl)}`,
+    `https://chart.googleapis.com/chart?cht=qr&chs=220x220&chl=${encodeURIComponent(targetUrl)}`
+  ];
+
+  let sourceIndex = 0;
   qrImage.onerror = () => {
+    sourceIndex += 1;
+    if (sourceIndex < qrSources.length) {
+      qrImage.src = qrSources[sourceIndex];
+      return;
+    }
+
     qrImage.alt = "QR code unavailable";
     qrImage.style.display = "none";
   };
+
+  qrImage.src = qrSources[sourceIndex];
 }
 
 function clearLoginForm() {
