@@ -393,6 +393,14 @@ input {
   gap: 10px;
 }
 
+.reaction-summary-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
 .reaction-icons-stack {
   display: flex;
 }
@@ -544,6 +552,139 @@ input {
   display: grid;
   gap: 14px;
   margin-top: 20px;
+}
+
+.modal-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 27, 46, 0.52);
+  backdrop-filter: blur(6px);
+}
+
+.modal-card {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: min(82vh, 720px);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(214, 224, 238, 0.9);
+  border-radius: 20px;
+  box-shadow: 0 28px 64px rgba(15, 29, 56, 0.24);
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.modal-head h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.modal-close {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: #eff3fa;
+  color: #445166;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.reaction-filter-row {
+  display: flex;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+
+.reaction-filter-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-weight: 700;
+  color: #516177;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.reaction-filter-btn.active {
+  background: #eaf2ff;
+  color: var(--fb-blue);
+  border-color: #bfd1ee;
+}
+
+.reaction-modal-list {
+  overflow-y: auto;
+  padding: 10px 18px 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.reaction-person {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 4px;
+}
+
+.reaction-person-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.reaction-person-main img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+
+.reaction-person-meta {
+  min-width: 0;
+}
+
+.reaction-person-meta strong,
+.reaction-person-meta span {
+  display: block;
+}
+
+.reaction-person-meta span {
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.reaction-person-icon {
+  font-size: 1.7rem;
+  flex: 0 0 auto;
+}
+
+.reaction-empty {
+  padding: 22px 6px;
+  color: var(--muted);
+  line-height: 1.6;
 }
 
 .comment-item {
