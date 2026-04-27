@@ -854,4 +854,14 @@ input {
   .primary-btn.small {
     width: 100%;
   }
+
+  .comment-item.owned {
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+  }
+
+  .comment-delete-btn {
+    justify-self: end;
+    margin-right: 4px;
+  }
 }
