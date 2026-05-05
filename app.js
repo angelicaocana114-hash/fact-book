@@ -98,7 +98,6 @@ if (loginForm) {
       avatar_data_url: avatar
     };
 
-    await upsertProfile(user);
     state.user = {
       id: user.id,
       name: user.display_name,
@@ -107,7 +106,8 @@ if (loginForm) {
 
     clearLoginForm();
     showFeed();
-    await refreshFeed();
+    upsertProfile(user).catch(() => {});
+    await refreshFeed().catch(() => {});
   });
 }
 
@@ -212,6 +212,7 @@ if (commentForm) {
       return;
     }
 
+    await ensureProfile();
     await createComment(state.user.id, text);
     if (commentInput) {
       commentInput.value = "";
@@ -577,6 +578,19 @@ async function upsertProfile(profile) {
   }, true);
 }
 
+async function ensureProfile() {
+  if (!state.user) {
+    return;
+  }
+
+  await upsertProfile({
+    id: state.user.id,
+    display_name: state.user.name,
+    password_hint: "",
+    avatar_data_url: state.user.avatar
+  });
+}
+
 async function getOwnReaction(userId) {
   const rows = await supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&profile_id=eq.${encodeURIComponent(userId)}&select=reaction_name`);
   return rows[0] ? rows[0].reaction_name : null;
@@ -614,6 +628,7 @@ async function deleteComment(commentId, userId) {
 }
 
 async function upsertReaction(userId, reaction) {
+  await ensureProfile();
   return supabaseRequest(`/rest/v1/factbook_reactions?on_conflict=post_id,profile_id`, {
     method: "POST",
     headers: {
