@@ -533,7 +533,9 @@ async function upsertReaction(reaction) {
       id: `${POST_ID}-${state.user.id}`,
       post_id: POST_ID,
       profile_id: state.user.id,
-      reaction_name: reaction
+      reaction_name: reaction,
+      display_name: state.user.name,
+      avatar_data_url: state.user.avatar
     })
   }, true);
 }
@@ -567,22 +569,16 @@ async function listReactions() {
 }
 
 async function listReactionPeople() {
-  const rows = await supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&select=reaction_name,profile_id,created_at&order=created_at.desc`);
+  const rows = await supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&select=reaction_name,profile_id,display_name,avatar_data_url,created_at&order=created_at.desc`);
   if (!rows.length) {
     return [];
   }
 
-  const ids = [...new Set(rows.map((row) => row.profile_id))];
-  const idFilter = ids.map((id) => `"${id}"`).join(",");
-  const profiles = await supabaseRequest(`/rest/v1/factbook_profiles?id=in.(${idFilter})&select=id,display_name,avatar_data_url`);
-  const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
-
   return rows.map((row) => {
-    const profile = profileMap.get(row.profile_id);
     return {
       reaction_name: row.reaction_name,
-      display_name: profile ? profile.display_name : "Student",
-      avatar_data_url: profile ? profile.avatar_data_url : "",
+      display_name: row.display_name || "Student",
+      avatar_data_url: row.avatar_data_url || "",
       created_at: row.created_at
     };
   });
