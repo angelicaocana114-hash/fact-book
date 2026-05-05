@@ -427,6 +427,8 @@ body.feed-mode .feed-screen {
   justify-content: center;
   padding: 24px 12px 50px;
   overflow-y: auto;
+  min-height: 0;
+  align-items: flex-start;
 }
 
 .post-card {
@@ -436,6 +438,7 @@ body.feed-mode .feed-screen {
   border-radius: 10px;
   box-shadow: var(--shadow);
   overflow: hidden;
+  margin-bottom: 18px;
 }
 
 .post-header,
