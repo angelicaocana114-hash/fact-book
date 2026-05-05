@@ -15,7 +15,7 @@ const composerAvatar = document.getElementById("composerAvatar");
 const topbarName = document.getElementById("topbarName");
 const logoutButton = document.getElementById("logoutButton");
 const reactButton = document.getElementById("reactButton");
-const reactWrap = reactButton.parentElement;
+const reactWrap = reactButton ? reactButton.parentElement : null;
 const reactionPicker = document.getElementById("reactionPicker");
 const currentReactionIcon = document.getElementById("currentReactionIcon");
 const currentReactionLabel = document.getElementById("currentReactionLabel");
@@ -57,136 +57,168 @@ const state = {
   activeReactionFilter: "All"
 };
 
-studentPhoto.addEventListener("change", () => {
-  const [file] = studentPhoto.files;
-  if (!file) {
-    photoPreview.innerHTML = "<span>No photo selected</span>";
-    return;
-  }
+if (studentPhoto) {
+  studentPhoto.addEventListener("change", () => {
+    const [file] = studentPhoto.files;
+    if (!file) {
+      if (photoPreview) {
+        photoPreview.innerHTML = "<span>No photo selected</span>";
+      }
+      return;
+    }
 
-  const reader = new FileReader();
-  reader.onload = () => {
-    photoPreview.innerHTML = `<img src="${reader.result}" alt="Selected profile preview">`;
-  };
-  reader.readAsDataURL(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (photoPreview) {
+        photoPreview.innerHTML = `<img src="${reader.result}" alt="Selected profile preview">`;
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+if (loginForm) {
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const name = studentName ? studentName.value.trim() : "";
+    const password = studentPassword ? studentPassword.value.trim() : "";
+    const [file] = studentPhoto ? studentPhoto.files : [];
+
+    if (!name || !password || !file) {
+      return;
+    }
+
+    const avatar = await readFileAsDataUrl(file);
+    const userId = createId();
+    const user = {
+      id: userId,
+      display_name: name.slice(0, 60),
+      password_hint: password.slice(0, 60),
+      avatar_data_url: avatar
+    };
+
+    await upsertProfile(user);
+    state.user = {
+      id: user.id,
+      name: user.display_name,
+      avatar: user.avatar_data_url
+    };
+
+    clearLoginForm();
+    showFeed();
+    await refreshFeed();
+  });
+}
+
+if (reactButton && reactWrap) {
+  reactButton.addEventListener("click", () => {
+    if (!state.user) {
+      return;
+    }
+    reactWrap.classList.toggle("open");
+  });
+}
+
+if (reactionPicker) {
+  reactionPicker.querySelectorAll(".picker-react").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!state.user) {
+        return;
+      }
+
+      const reaction = button.dataset.reaction;
+      if (state.selectedReaction === reaction) {
+        await deleteReaction(state.user.id);
+      } else {
+        await upsertReaction(state.user.id, reaction);
+      }
+
+      if (reactWrap) {
+        reactWrap.classList.remove("open");
+      }
+      spawnReactionBurst(reactionMeta[reaction].emoji);
+      await refreshFeed();
+    });
+  });
+}
+
+document.addEventListener("click", (event) => {
+  if (reactWrap && !reactWrap.contains(event.target)) {
+    reactWrap.classList.remove("open");
+  }
 });
 
-loginForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
+if (commentFocusButton && commentInput) {
+  commentFocusButton.addEventListener("click", () => {
+    commentInput.focus();
+  });
+}
 
-  const name = studentName.value.trim();
-  const password = studentPassword.value.trim();
-  const [file] = studentPhoto.files;
+if (shareButton) {
+  shareButton.addEventListener("click", async () => {
+    const shareUrl = window.location.href;
+    const shareText = "Join the discussion on Fact-Book.";
 
-  if (!name || !password || !file) {
-    return;
-  }
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Fact-Book",
+          text: shareText,
+          url: shareUrl
+        });
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        copyWithTextarea(shareUrl);
+      }
 
-  const avatar = await readFileAsDataUrl(file);
-  const userId = createId();
-  const user = {
-    id: userId,
-    display_name: name.slice(0, 60),
-    password_hint: password.slice(0, 60),
-    avatar_data_url: avatar
-  };
+      pulseShareButton("Shared");
+    } catch {
+      pulseShareButton("Share");
+    }
+  });
+}
 
-  await upsertProfile(user);
-  state.user = {
-    id: user.id,
-    name: user.display_name,
-    avatar: user.avatar_data_url
-  };
+if (logoutButton) {
+  logoutButton.addEventListener("click", () => {
+    resetSession();
+  });
+}
 
-  clearLoginForm();
-  showFeed();
-  await refreshFeed();
-});
+if (reactionSummaryButton) {
+  reactionSummaryButton.addEventListener("click", () => {
+    openReactionModal();
+  });
+}
 
-reactButton.addEventListener("click", () => {
-  if (!state.user) {
-    return;
-  }
-  reactWrap.classList.toggle("open");
-});
+if (reactionModalClose) {
+  reactionModalClose.addEventListener("click", closeReactionModal);
+}
 
-reactionPicker.querySelectorAll(".picker-react").forEach((button) => {
-  button.addEventListener("click", async () => {
+if (reactionModalBackdrop) {
+  reactionModalBackdrop.addEventListener("click", closeReactionModal);
+}
+
+if (commentForm) {
+  commentForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
     if (!state.user) {
       return;
     }
 
-    const reaction = button.dataset.reaction;
-    if (state.selectedReaction === reaction) {
-      await deleteReaction(state.user.id);
-    } else {
-      await upsertReaction(state.user.id, reaction);
+    const text = commentInput ? commentInput.value.trim() : "";
+    if (!text) {
+      return;
     }
-    reactWrap.classList.remove("open");
-    spawnReactionBurst(reactionMeta[reaction].emoji);
+
+    await createComment(state.user.id, text);
+    if (commentInput) {
+      commentInput.value = "";
+    }
     await refreshFeed();
   });
-});
-
-document.addEventListener("click", (event) => {
-  if (!reactWrap.contains(event.target)) {
-    reactWrap.classList.remove("open");
-  }
-});
-
-commentFocusButton.addEventListener("click", () => {
-  commentInput.focus();
-});
-
-shareButton.addEventListener("click", async () => {
-  const shareUrl = window.location.href;
-  const shareText = "Join the discussion on Fact-Book.";
-
-  try {
-    if (navigator.share) {
-      await navigator.share({
-        title: "Fact-Book",
-        text: shareText,
-        url: shareUrl
-      });
-    } else if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(shareUrl);
-    } else {
-      copyWithTextarea(shareUrl);
-    }
-
-    pulseShareButton("Shared");
-  } catch {
-    pulseShareButton("Share");
-  }
-});
-
-logoutButton.addEventListener("click", () => {
-  resetSession();
-});
-
-reactionSummaryButton.addEventListener("click", () => {
-  openReactionModal();
-});
-
-reactionModalClose.addEventListener("click", closeReactionModal);
-reactionModalBackdrop.addEventListener("click", closeReactionModal);
-
-commentForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (!state.user) {
-    return;
-  }
-
-  const text = commentInput.value.trim();
-  if (!text) {
-    return;
-  }
-
-  await createComment(state.user.id, text);
-  commentInput.value = "";
-  await refreshFeed();
-});
+}
 
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
@@ -194,7 +226,7 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
-window.addEventListener("load", async () => {
+window.addEventListener("load", () => {
   renderQrCode();
   resetSession(true);
 });
@@ -217,13 +249,21 @@ async function refreshFeed() {
 }
 
 function showFeed() {
+  if (!authScreen || !feedScreen) {
+    return;
+  }
+
   authScreen.classList.add("hidden");
   feedScreen.classList.remove("hidden");
-  topbarName.textContent = state.user.name;
+  if (topbarName) {
+    topbarName.textContent = state.user.name;
+  }
   window.scrollTo({ top: 0, behavior: "smooth" });
 
   [topbarAvatar, postAvatar, composerAvatar].forEach((image) => {
-    image.src = state.user.avatar;
+    if (image) {
+      image.src = state.user.avatar;
+    }
   });
 
   if (!state.refreshTimer) {
@@ -246,34 +286,63 @@ function resetSession(isInitialLoad = false) {
     state.refreshTimer = null;
   }
 
-  feedScreen.classList.add("hidden");
-  authScreen.classList.remove("hidden");
+  if (feedScreen) {
+    feedScreen.classList.add("hidden");
+  }
+  if (authScreen) {
+    authScreen.classList.remove("hidden");
+  }
   window.scrollTo({ top: 0, behavior: isInitialLoad ? "auto" : "smooth" });
   clearLoginForm();
-  reactWrap.classList.remove("open");
+  if (reactWrap) {
+    reactWrap.classList.remove("open");
+  }
   closeReactionModal();
-  reactionCount.textContent = "0 reactions";
-  commentCount.textContent = "0 comments";
-  currentReactionIcon.textContent = "👍";
-  currentReactionLabel.textContent = "React";
-  reactButton.style.color = "#5c6778";
 
-  reactionIconsStack.innerHTML = `
-    <span class="mini-react like">👍</span>
-    <span class="mini-react love">❤️</span>
-    <span class="mini-react wow">😮</span>
-  `;
+  if (reactionCount) {
+    reactionCount.textContent = "0 reactions";
+  }
+  if (commentCount) {
+    commentCount.textContent = "0 comments";
+  }
+  if (currentReactionIcon) {
+    currentReactionIcon.textContent = "👍";
+  }
+  if (currentReactionLabel) {
+    currentReactionLabel.textContent = "React";
+  }
+  if (reactButton) {
+    reactButton.style.color = "#5c6778";
+  }
+
+  if (reactionIconsStack) {
+    reactionIconsStack.innerHTML = `
+      <span class="mini-react like">👍</span>
+      <span class="mini-react love">❤️</span>
+      <span class="mini-react wow">😮</span>
+    `;
+  }
 
   if (!isInitialLoad) {
-    topbarName.textContent = "";
-    topbarAvatar.removeAttribute("src");
-    postAvatar.removeAttribute("src");
-    composerAvatar.removeAttribute("src");
-    commentList.innerHTML = "";
+    if (topbarName) {
+      topbarName.textContent = "";
+    }
+    [topbarAvatar, postAvatar, composerAvatar].forEach((image) => {
+      if (image) {
+        image.removeAttribute("src");
+      }
+    });
+    if (commentList) {
+      commentList.innerHTML = "";
+    }
   }
 }
 
 function renderReactionState() {
+  if (!reactionIconsStack || !reactionCount || !commentCount || !currentReactionIcon || !currentReactionLabel || !reactButton) {
+    return;
+  }
+
   const totals = Object.entries(state.reactions).sort((left, right) => right[1] - left[1]);
   const totalCount = totals.reduce((sum, entry) => sum + entry[1], 0);
 
@@ -313,6 +382,10 @@ function renderReactionState() {
 }
 
 function renderReactionModal() {
+  if (!reactionFilterRow || !reactionModalList) {
+    return;
+  }
+
   const totals = [
     { name: "All", count: state.reactionPeople.length, emoji: "All" },
     ...Object.entries(state.reactions)
@@ -365,15 +438,25 @@ function renderReactionModal() {
 }
 
 function openReactionModal() {
+  if (!reactionModal) {
+    return;
+  }
   renderReactionModal();
   reactionModal.classList.remove("hidden");
 }
 
 function closeReactionModal() {
+  if (!reactionModal) {
+    return;
+  }
   reactionModal.classList.add("hidden");
 }
 
 function renderComments() {
+  if (!commentList) {
+    return;
+  }
+
   commentList.innerHTML = "";
 
   if (!state.comments.length) {
@@ -414,6 +497,9 @@ function renderComments() {
       return;
     }
 
+    if (!commentTemplate) {
+      return;
+    }
     const node = commentTemplate.content.cloneNode(true);
     node.querySelector(".comment-avatar").src = comment.avatar_data_url;
     node.querySelector(".comment-author").textContent = comment.display_name;
@@ -456,6 +542,9 @@ function renderQrCode() {
 }
 
 function clearLoginForm() {
+  if (!loginForm || !photoPreview) {
+    return;
+  }
   loginForm.reset();
   photoPreview.innerHTML = "<span>No photo selected</span>";
 }
@@ -601,6 +690,9 @@ function escapeHtml(value) {
 }
 
 function pulseShareButton(label) {
+  if (!shareButton) {
+    return;
+  }
   const original = shareButton.innerHTML;
   shareButton.textContent = label;
   shareButton.style.color = "#1877f2";
