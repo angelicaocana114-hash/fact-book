@@ -53,6 +53,11 @@ const state = {
   refreshTimer: null
 };
 
+const fallbackStore = {
+  comments: [],
+  reactionsByUser: {}
+};
+
 window.addEventListener("load", () => {
   resetToLogin();
 });
@@ -91,8 +96,13 @@ loginForm.addEventListener("submit", async (event) => {
 
   clearLoginForm();
   showFeed();
-  await ensureProfile();
-  await refreshFeed();
+  await ensureProfile().catch(() => {});
+  await refreshFeed().catch(() => {
+    applyFallbackToState();
+    renderReactionState();
+    renderComments();
+    renderReactionModal();
+  });
 });
 
 logoutButton.addEventListener("click", () => {
@@ -113,17 +123,28 @@ reactionPicker.querySelectorAll(".picker-react").forEach((button) => {
     }
 
     const reaction = button.dataset.reaction;
-    await ensureProfile();
+    let usedFallback = false;
 
-    if (state.selectedReaction === reaction) {
-      await deleteReaction();
-    } else {
-      await upsertReaction(reaction);
+    try {
+      await ensureProfile();
+      if (state.selectedReaction === reaction) {
+        await deleteReaction();
+      } else {
+        await upsertReaction(reaction);
+      }
+      await refreshFeed();
+    } catch {
+      usedFallback = true;
+      toggleFallbackReaction(reaction);
     }
 
     reactWrap.classList.remove("open");
     spawnReactionBurst(reactionMeta[reaction].emoji);
-    await refreshFeed();
+
+    if (!usedFallback) {
+      renderReactionState();
+      renderReactionModal();
+    }
   });
 });
 
@@ -148,10 +169,15 @@ commentForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  await ensureProfile();
-  await createComment(text);
-  commentInput.value = "";
-  await refreshFeed();
+  try {
+    await ensureProfile();
+    await createComment(text);
+    commentInput.value = "";
+    await refreshFeed();
+  } catch {
+    addFallbackComment(text);
+    commentInput.value = "";
+  }
 });
 
 shareButton.addEventListener("click", async () => {
@@ -207,6 +233,7 @@ async function refreshFeed() {
 function showFeed() {
   authScreen.classList.add("hidden");
   feedScreen.classList.remove("hidden");
+  document.body.classList.add("feed-mode");
   topbarAvatar.src = state.user.avatar;
   composerAvatar.src = state.user.avatar;
   topbarName.textContent = state.user.name;
@@ -214,7 +241,12 @@ function showFeed() {
 
   if (!state.refreshTimer) {
     state.refreshTimer = window.setInterval(() => {
-      refreshFeed().catch(() => {});
+      refreshFeed().catch(() => {
+        applyFallbackToState();
+        renderReactionState();
+        renderComments();
+        renderReactionModal();
+      });
     }, 4000);
   }
 }
@@ -234,12 +266,14 @@ function resetToLogin() {
 
   feedScreen.classList.add("hidden");
   authScreen.classList.remove("hidden");
+  document.body.classList.remove("feed-mode");
   closeReactionModal();
   clearLoginForm();
   reactWrap.classList.remove("open");
   topbarAvatar.removeAttribute("src");
   composerAvatar.removeAttribute("src");
   topbarName.textContent = "";
+  applyFallbackToState();
   renderReactionState();
   renderComments();
   forceScrollTop();
@@ -317,8 +351,12 @@ function renderComments() {
         <button type="button" class="comment-delete-btn">Delete</button>
       `;
       article.querySelector(".comment-delete-btn").addEventListener("click", async () => {
-        await deleteComment(comment.id);
-        await refreshFeed();
+        try {
+          await deleteComment(comment.id);
+          await refreshFeed();
+        } catch {
+          deleteFallbackComment(comment.id);
+        }
       });
       fragment.appendChild(article);
       return;
@@ -391,6 +429,52 @@ function renderReactionModal() {
 
 function closeReactionModal() {
   reactionModal.classList.add("hidden");
+}
+
+function addFallbackComment(text) {
+  fallbackStore.comments.unshift({
+    id: createId(),
+    profile_id: state.user.id,
+    display_name: state.user.name,
+    avatar_data_url: state.user.avatar,
+    body_text: text
+  });
+  applyFallbackToState();
+  renderComments();
+  renderReactionState();
+}
+
+function deleteFallbackComment(commentId) {
+  fallbackStore.comments = fallbackStore.comments.filter((comment) => comment.id !== commentId);
+  applyFallbackToState();
+  renderComments();
+  renderReactionState();
+}
+
+function toggleFallbackReaction(reaction) {
+  if (state.selectedReaction === reaction) {
+    delete fallbackStore.reactionsByUser[state.user.id];
+  } else {
+    fallbackStore.reactionsByUser[state.user.id] = reaction;
+  }
+  applyFallbackToState();
+  renderReactionState();
+  renderReactionModal();
+}
+
+function applyFallbackToState() {
+  state.comments = [...fallbackStore.comments];
+  state.selectedReaction = state.user ? fallbackStore.reactionsByUser[state.user.id] || null : null;
+  state.reactions = Object.values(fallbackStore.reactionsByUser).reduce((summary, reaction) => {
+    summary[reaction] = (summary[reaction] || 0) + 1;
+    return summary;
+  }, {});
+  state.reactionPeople = Object.entries(fallbackStore.reactionsByUser).map(([userId, reactionName]) => ({
+    reaction_name: reactionName,
+    display_name: state.user && userId === state.user.id ? state.user.name : "Student",
+    avatar_data_url: state.user && userId === state.user.id ? state.user.avatar : "",
+    created_at: Date.now()
+  }));
 }
 
 async function ensureProfile() {
