@@ -10,27 +10,23 @@ const studentPassword = document.getElementById("studentPassword");
 const studentPhoto = document.getElementById("studentPhoto");
 const photoPreview = document.getElementById("photoPreview");
 const topbarAvatar = document.getElementById("topbarAvatar");
-const postAvatar = document.getElementById("postAvatar");
 const composerAvatar = document.getElementById("composerAvatar");
 const topbarName = document.getElementById("topbarName");
 const logoutButton = document.getElementById("logoutButton");
 const reactButton = document.getElementById("reactButton");
-const reactWrap = reactButton ? reactButton.parentElement : null;
+const reactWrap = document.querySelector(".react-wrap");
 const reactionPicker = document.getElementById("reactionPicker");
 const currentReactionIcon = document.getElementById("currentReactionIcon");
 const currentReactionLabel = document.getElementById("currentReactionLabel");
-const reactionCount = document.getElementById("reactionCount");
-const reactionSummaryButton = document.getElementById("reactionSummaryButton");
+const reactionIconsStack = document.getElementById("reactionIconsStack");
+const reactionCountButton = document.getElementById("reactionCountButton");
 const commentCount = document.getElementById("commentCount");
+const commentFocusButton = document.getElementById("commentFocusButton");
+const shareButton = document.getElementById("shareButton");
 const commentForm = document.getElementById("commentForm");
 const commentInput = document.getElementById("commentInput");
 const commentList = document.getElementById("commentList");
 const commentTemplate = document.getElementById("commentTemplate");
-const commentFocusButton = document.getElementById("commentFocusButton");
-const shareButton = document.getElementById("shareButton");
-const reactionIconsStack = document.getElementById("reactionIconsStack");
-const qrImage = document.getElementById("qrImage");
-const qrLink = document.getElementById("qrLink");
 const reactionModal = document.getElementById("reactionModal");
 const reactionModalBackdrop = document.getElementById("reactionModalBackdrop");
 const reactionModalClose = document.getElementById("reactionModalClose");
@@ -40,186 +36,149 @@ const reactionFilterRow = document.getElementById("reactionFilterRow");
 const reactionMeta = {
   Like: { emoji: "👍", color: "#1877f2", className: "like" },
   Love: { emoji: "❤️", color: "#f33e58", className: "love" },
-  Care: { emoji: "🤗", color: "#f7b125", className: "care" },
-  Haha: { emoji: "😂", color: "#f7b125", className: "haha" },
+  Care: { emoji: "🤗", color: "#f7b125", className: "wow" },
+  Haha: { emoji: "😂", color: "#f7b125", className: "wow" },
   Wow: { emoji: "😮", color: "#f7b125", className: "wow" },
-  Sad: { emoji: "😢", color: "#f7b125", className: "sad" },
-  Angry: { emoji: "😡", color: "#e4602a", className: "angry" }
+  Sad: { emoji: "😢", color: "#f7b125", className: "wow" },
+  Angry: { emoji: "😡", color: "#e4602a", className: "love" }
 };
 
 const state = {
   user: null,
-  refreshTimer: null,
   comments: [],
   reactions: {},
   selectedReaction: null,
   reactionPeople: [],
-  activeReactionFilter: "All"
+  activeReactionFilter: "All",
+  refreshTimer: null
 };
 
-if (studentPhoto) {
-  studentPhoto.addEventListener("change", () => {
-    const [file] = studentPhoto.files;
-    if (!file) {
-      if (photoPreview) {
-        photoPreview.innerHTML = "<span>No photo selected</span>";
-      }
-      return;
-    }
+window.addEventListener("load", () => {
+  resetToLogin();
+});
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (photoPreview) {
-        photoPreview.innerHTML = `<img src="${reader.result}" alt="Selected profile preview">`;
-      }
-    };
-    reader.readAsDataURL(file);
-  });
-}
+studentPhoto.addEventListener("change", () => {
+  const [file] = studentPhoto.files;
+  if (!file) {
+    photoPreview.innerHTML = "<span>No photo selected</span>";
+    return;
+  }
 
-if (loginForm) {
-  loginForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
+  const reader = new FileReader();
+  reader.onload = () => {
+    photoPreview.innerHTML = `<img src="${reader.result}" alt="Selected profile preview">`;
+  };
+  reader.readAsDataURL(file);
+});
 
-    const name = studentName ? studentName.value.trim() : "";
-    const password = studentPassword ? studentPassword.value.trim() : "";
-    const [file] = studentPhoto ? studentPhoto.files : [];
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
 
-    if (!name || !password || !file) {
-      return;
-    }
+  const name = studentName.value.trim();
+  const password = studentPassword.value.trim();
+  const [file] = studentPhoto.files;
 
-    const avatar = await readFileAsDataUrl(file);
-    const userId = createId();
-    const user = {
-      id: userId,
-      display_name: name.slice(0, 60),
-      password_hint: password.slice(0, 60),
-      avatar_data_url: avatar
-    };
+  if (!name || !password || !file) {
+    return;
+  }
 
-    state.user = {
-      id: user.id,
-      name: user.display_name,
-      avatar: user.avatar_data_url
-    };
+  const avatar = await readFileAsDataUrl(file);
+  state.user = {
+    id: createId(),
+    name,
+    avatar
+  };
 
-    clearLoginForm();
-    showFeed();
-    upsertProfile(user).catch(() => {});
-    await refreshFeed().catch(() => {});
-  });
-}
+  clearLoginForm();
+  showFeed();
+  await ensureProfile();
+  await refreshFeed();
+});
 
-if (reactButton && reactWrap) {
-  reactButton.addEventListener("click", () => {
+logoutButton.addEventListener("click", () => {
+  resetToLogin();
+});
+
+reactButton.addEventListener("click", () => {
+  if (!state.user) {
+    return;
+  }
+  reactWrap.classList.toggle("open");
+});
+
+reactionPicker.querySelectorAll(".picker-react").forEach((button) => {
+  button.addEventListener("click", async () => {
     if (!state.user) {
       return;
     }
-    reactWrap.classList.toggle("open");
-  });
-}
 
-if (reactionPicker) {
-  reactionPicker.querySelectorAll(".picker-react").forEach((button) => {
-    button.addEventListener("click", async () => {
-      if (!state.user) {
-        return;
-      }
+    const reaction = button.dataset.reaction;
+    await ensureProfile();
 
-      const reaction = button.dataset.reaction;
     if (state.selectedReaction === reaction) {
-      await deleteReaction(state.user.id);
+      await deleteReaction();
     } else {
-      await upsertReaction(state.user.id, reaction);
+      await upsertReaction(reaction);
     }
 
-    if (reactWrap) {
-      reactWrap.classList.remove("open");
-    }
+    reactWrap.classList.remove("open");
     spawnReactionBurst(reactionMeta[reaction].emoji);
-    await refreshFeed().catch(() => {});
+    await refreshFeed();
   });
 });
-}
 
 document.addEventListener("click", (event) => {
-  if (reactWrap && !reactWrap.contains(event.target)) {
+  if (!reactWrap.contains(event.target)) {
     reactWrap.classList.remove("open");
   }
 });
 
-if (commentFocusButton && commentInput) {
-  commentFocusButton.addEventListener("click", () => {
-    commentInput.focus();
-  });
-}
+commentFocusButton.addEventListener("click", () => {
+  commentInput.focus();
+});
 
-if (shareButton) {
-  shareButton.addEventListener("click", async () => {
-    const shareUrl = window.location.href;
-    const shareText = "Join the discussion on Fact-Book.";
+commentForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!state.user) {
+    return;
+  }
 
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: "Fact-Book",
-          text: shareText,
-          url: shareUrl
-        });
-      } else if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl);
-      } else {
-        copyWithTextarea(shareUrl);
-      }
+  const text = commentInput.value.trim();
+  if (!text) {
+    return;
+  }
 
-      pulseShareButton("Shared");
-    } catch {
-      pulseShareButton("Share");
+  await ensureProfile();
+  await createComment(text);
+  commentInput.value = "";
+  await refreshFeed();
+});
+
+shareButton.addEventListener("click", async () => {
+  const shareUrl = window.location.href;
+  const shareText = "Join the discussion on Fact-Book.";
+
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: "Fact-Book", text: shareText, url: shareUrl });
+    } else if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(shareUrl);
+    } else {
+      copyWithTextarea(shareUrl);
     }
-  });
-}
+    pulseShareButton("Shared");
+  } catch {
+    pulseShareButton("Share");
+  }
+});
 
-if (logoutButton) {
-  logoutButton.addEventListener("click", () => {
-    resetSession();
-  });
-}
+reactionCountButton.addEventListener("click", () => {
+  renderReactionModal();
+  reactionModal.classList.remove("hidden");
+});
 
-if (reactionSummaryButton) {
-  reactionSummaryButton.addEventListener("click", () => {
-    openReactionModal();
-  });
-}
-
-if (reactionModalClose) {
-  reactionModalClose.addEventListener("click", closeReactionModal);
-}
-
-if (reactionModalBackdrop) {
-  reactionModalBackdrop.addEventListener("click", closeReactionModal);
-}
-
-if (commentForm) {
-  commentForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    if (!state.user) {
-      return;
-    }
-
-    const text = commentInput ? commentInput.value.trim() : "";
-    if (!text) {
-      return;
-    }
-
-    await ensureProfile();
-    await createComment(state.user.id, text);
-    if (commentInput) {
-      commentInput.value = "";
-    }
-    await refreshFeed().catch(() => {});
-  });
-}
+reactionModalClose.addEventListener("click", closeReactionModal);
+reactionModalBackdrop.addEventListener("click", closeReactionModal);
 
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
@@ -227,45 +186,31 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
-window.addEventListener("load", () => {
-  renderQrCode();
-  resetSession(true);
-});
-
 async function refreshFeed() {
-  const [comments, reactions, ownReaction, reactionPeople] = await Promise.all([
+  const [comments, reactions, reactionPeople, ownReaction] = await Promise.all([
     listComments(),
     listReactions(),
-    state.user ? getOwnReaction(state.user.id) : Promise.resolve(null),
-    listReactionPeople()
+    listReactionPeople(),
+    getOwnReaction()
   ]);
 
   state.comments = comments;
   state.reactions = reactions;
-  state.selectedReaction = ownReaction;
   state.reactionPeople = reactionPeople;
+  state.selectedReaction = ownReaction;
+
   renderReactionState();
   renderComments();
   renderReactionModal();
 }
 
 function showFeed() {
-  if (!authScreen || !feedScreen) {
-    return;
-  }
-
   authScreen.classList.add("hidden");
   feedScreen.classList.remove("hidden");
-  if (topbarName) {
-    topbarName.textContent = state.user.name;
-  }
+  topbarAvatar.src = state.user.avatar;
+  composerAvatar.src = state.user.avatar;
+  topbarName.textContent = state.user.name;
   forceScrollTop();
-
-  [topbarAvatar, postAvatar, composerAvatar].forEach((image) => {
-    if (image) {
-      image.src = state.user.avatar;
-    }
-  });
 
   if (!state.refreshTimer) {
     state.refreshTimer = window.setInterval(() => {
@@ -274,11 +219,11 @@ function showFeed() {
   }
 }
 
-function resetSession(isInitialLoad = false) {
+function resetToLogin() {
   state.user = null;
-  state.selectedReaction = null;
   state.comments = [];
   state.reactions = {};
+  state.selectedReaction = null;
   state.reactionPeople = [];
   state.activeReactionFilter = "All";
 
@@ -287,186 +232,67 @@ function resetSession(isInitialLoad = false) {
     state.refreshTimer = null;
   }
 
-  if (feedScreen) {
-    feedScreen.classList.add("hidden");
-  }
-  if (authScreen) {
-    authScreen.classList.remove("hidden");
-  }
-  forceScrollTop();
-  clearLoginForm();
-  if (reactWrap) {
-    reactWrap.classList.remove("open");
-  }
+  feedScreen.classList.add("hidden");
+  authScreen.classList.remove("hidden");
   closeReactionModal();
-
-  if (reactionCount) {
-    reactionCount.textContent = "0 reactions";
-  }
-  if (commentCount) {
-    commentCount.textContent = "0 comments";
-  }
-  if (currentReactionIcon) {
-    currentReactionIcon.textContent = "👍";
-  }
-  if (currentReactionLabel) {
-    currentReactionLabel.textContent = "React";
-  }
-  if (reactButton) {
-    reactButton.style.color = "#5c6778";
-  }
-
-  if (reactionIconsStack) {
-    reactionIconsStack.innerHTML = `
-      <span class="mini-react like">👍</span>
-      <span class="mini-react love">❤️</span>
-      <span class="mini-react wow">😮</span>
-    `;
-  }
-
-  if (!isInitialLoad) {
-    if (topbarName) {
-      topbarName.textContent = "";
-    }
-    [topbarAvatar, postAvatar, composerAvatar].forEach((image) => {
-      if (image) {
-        image.removeAttribute("src");
-      }
-    });
-    if (commentList) {
-      commentList.innerHTML = "";
-    }
-  }
+  clearLoginForm();
+  reactWrap.classList.remove("open");
+  topbarAvatar.removeAttribute("src");
+  composerAvatar.removeAttribute("src");
+  topbarName.textContent = "";
+  renderReactionState();
+  renderComments();
+  forceScrollTop();
 }
 
 function renderReactionState() {
-  if (!reactionIconsStack || !reactionCount || !commentCount || !currentReactionIcon || !currentReactionLabel || !reactButton) {
-    return;
-  }
-
-  const totals = Object.entries(state.reactions).sort((left, right) => right[1] - left[1]);
+  const totals = Object.entries(state.reactions).sort((a, b) => b[1] - a[1]);
   const totalCount = totals.reduce((sum, entry) => sum + entry[1], 0);
 
   reactionIconsStack.innerHTML = "";
-  totals.slice(0, 3).forEach(([name]) => {
-    const meta = reactionMeta[name];
-    const chip = document.createElement("span");
-    chip.className = `mini-react ${meta.className}`;
-    chip.textContent = meta.emoji;
-    reactionIconsStack.appendChild(chip);
-  });
-
   if (!totals.length) {
     ["Like", "Love", "Wow"].forEach((name) => {
-      const meta = reactionMeta[name];
-      const chip = document.createElement("span");
-      chip.className = `mini-react ${meta.className}`;
-      chip.textContent = meta.emoji;
-      reactionIconsStack.appendChild(chip);
+      const icon = document.createElement("span");
+      icon.className = `mini-react ${reactionMeta[name].className}`;
+      icon.textContent = reactionMeta[name].emoji;
+      reactionIconsStack.appendChild(icon);
+    });
+  } else {
+    totals.slice(0, 3).forEach(([name]) => {
+      const icon = document.createElement("span");
+      icon.className = `mini-react ${reactionMeta[name].className}`;
+      icon.textContent = reactionMeta[name].emoji;
+      reactionIconsStack.appendChild(icon);
     });
   }
 
-  reactionCount.textContent = totalCount === 0 ? "0 reactions" : `${totalCount} reaction${totalCount === 1 ? "" : "s"}`;
+  reactionCountButton.textContent = `${totalCount} reaction${totalCount === 1 ? "" : "s"}`;
   commentCount.textContent = `${state.comments.length} comment${state.comments.length === 1 ? "" : "s"}`;
 
   if (!state.selectedReaction) {
     currentReactionIcon.textContent = "👍";
-    currentReactionLabel.textContent = "React";
-    reactButton.style.color = "#5c6778";
+    currentReactionLabel.textContent = "Like";
+    reactButton.style.color = "#596679";
     return;
   }
 
-  const meta = reactionMeta[state.selectedReaction];
-  currentReactionIcon.textContent = meta.emoji;
+  currentReactionIcon.textContent = reactionMeta[state.selectedReaction].emoji;
   currentReactionLabel.textContent = state.selectedReaction;
-  reactButton.style.color = meta.color;
-}
-
-function renderReactionModal() {
-  if (!reactionFilterRow || !reactionModalList) {
-    return;
-  }
-
-  const totals = [
-    { name: "All", count: state.reactionPeople.length, emoji: "All" },
-    ...Object.entries(state.reactions)
-      .sort((left, right) => right[1] - left[1])
-      .map(([name, count]) => ({ name, count, emoji: reactionMeta[name].emoji }))
-  ];
-
-  reactionFilterRow.innerHTML = "";
-  totals.forEach((entry) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `reaction-filter-btn${state.activeReactionFilter === entry.name ? " active" : ""}`;
-    button.textContent = `${entry.emoji} ${entry.count}`;
-    button.addEventListener("click", () => {
-      state.activeReactionFilter = entry.name;
-      renderReactionModal();
-    });
-    reactionFilterRow.appendChild(button);
-  });
-
-  const visiblePeople = state.activeReactionFilter === "All"
-    ? state.reactionPeople
-    : state.reactionPeople.filter((person) => person.reaction_name === state.activeReactionFilter);
-
-  reactionModalList.innerHTML = "";
-
-  if (!visiblePeople.length) {
-    reactionModalList.innerHTML = `<div class="reaction-empty">No reactions to show for this filter yet.</div>`;
-    return;
-  }
-
-  const fragment = document.createDocumentFragment();
-  visiblePeople.forEach((person) => {
-    const row = document.createElement("article");
-    row.className = "reaction-person";
-    row.innerHTML = `
-      <div class="reaction-person-main">
-        <img src="${escapeHtml(person.avatar_data_url)}" alt="Reaction avatar">
-        <div class="reaction-person-meta">
-          <strong>${escapeHtml(person.display_name)}</strong>
-          <span>reacted with ${escapeHtml(person.reaction_name)}</span>
-        </div>
-      </div>
-      <div class="reaction-person-icon">${reactionMeta[person.reaction_name]?.emoji || "👍"}</div>
-    `;
-    fragment.appendChild(row);
-  });
-
-  reactionModalList.appendChild(fragment);
-}
-
-function openReactionModal() {
-  if (!reactionModal) {
-    return;
-  }
-  renderReactionModal();
-  reactionModal.classList.remove("hidden");
-}
-
-function closeReactionModal() {
-  if (!reactionModal) {
-    return;
-  }
-  reactionModal.classList.add("hidden");
+  reactButton.style.color = reactionMeta[state.selectedReaction].color;
 }
 
 function renderComments() {
-  if (!commentList) {
-    return;
-  }
-
   commentList.innerHTML = "";
 
   if (!state.comments.length) {
     commentList.innerHTML = `
       <article class="comment-item">
-        <div class="comment-placeholder-icon">💬</div>
-        <div class="comment-bubble">
-          <strong class="comment-author">Start the discussion</strong>
-          <p>Use the comment box to explain why the statement is right or wrong.</p>
+        <div class="comment-main">
+          <div class="comment-placeholder-icon">💬</div>
+          <div class="comment-bubble">
+            <strong class="comment-author">Start the discussion</strong>
+            <p>Share your thoughts about the post.</p>
+          </div>
         </div>
       </article>
     `;
@@ -475,32 +301,29 @@ function renderComments() {
 
   const fragment = document.createDocumentFragment();
   state.comments.forEach((comment) => {
-    if (state.user && comment.profile_id === state.user.id) {
+    const isOwner = state.user && comment.profile_id === state.user.id;
+
+    if (isOwner) {
       const article = document.createElement("article");
       article.className = "comment-item owned";
       article.innerHTML = `
         <div class="comment-main">
           <img class="comment-avatar" alt="Comment avatar" src="${escapeHtml(comment.avatar_data_url)}">
           <div class="comment-bubble">
-            <strong class="comment-author"></strong>
-            <p class="comment-text"></p>
+            <strong class="comment-author">${escapeHtml(comment.display_name)}</strong>
+            <p class="comment-text">${escapeHtml(comment.body_text)}</p>
           </div>
         </div>
-        <button type="button" class="comment-delete-btn" data-comment-id="${escapeHtml(comment.id)}">Delete</button>
+        <button type="button" class="comment-delete-btn">Delete</button>
       `;
-      article.querySelector(".comment-author").textContent = comment.display_name;
-      article.querySelector(".comment-text").textContent = comment.body_text;
       article.querySelector(".comment-delete-btn").addEventListener("click", async () => {
-        await deleteComment(comment.id, state.user.id);
+        await deleteComment(comment.id);
         await refreshFeed();
       });
       fragment.appendChild(article);
       return;
     }
 
-    if (!commentTemplate) {
-      return;
-    }
     const node = commentTemplate.content.cloneNode(true);
     node.querySelector(".comment-avatar").src = comment.avatar_data_url;
     node.querySelector(".comment-author").textContent = comment.display_name;
@@ -511,71 +334,63 @@ function renderComments() {
   commentList.appendChild(fragment);
 }
 
-function renderQrCode() {
-  if (!qrImage || !qrLink) {
-    return;
-  }
-
-  const targetUrl = window.location.href;
-  qrLink.textContent = targetUrl;
-  qrLink.href = targetUrl;
-  qrImage.style.display = "";
-
-  const qrSources = [
-    `https://quickchart.io/qr?size=220&text=${encodeURIComponent(targetUrl)}`,
-    `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(targetUrl)}`,
-    `https://chart.googleapis.com/chart?cht=qr&chs=220x220&chl=${encodeURIComponent(targetUrl)}`
+function renderReactionModal() {
+  const filters = [
+    { name: "All", count: state.reactionPeople.length, label: "All" },
+    ...Object.entries(state.reactions)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({
+        name,
+        count,
+        label: `${reactionMeta[name].emoji} ${count}`
+      }))
   ];
 
-  let sourceIndex = 0;
-  qrImage.onerror = () => {
-    sourceIndex += 1;
-    if (sourceIndex < qrSources.length) {
-      qrImage.src = qrSources[sourceIndex];
-      return;
-    }
+  reactionFilterRow.innerHTML = "";
+  filters.forEach((filter) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `reaction-filter-btn${state.activeReactionFilter === filter.name ? " active" : ""}`;
+    button.textContent = filter.label;
+    button.addEventListener("click", () => {
+      state.activeReactionFilter = filter.name;
+      renderReactionModal();
+    });
+    reactionFilterRow.appendChild(button);
+  });
 
-    qrImage.alt = "QR code unavailable";
-    qrImage.style.display = "none";
-  };
+  const visible = state.activeReactionFilter === "All"
+    ? state.reactionPeople
+    : state.reactionPeople.filter((entry) => entry.reaction_name === state.activeReactionFilter);
 
-  qrImage.src = qrSources[sourceIndex];
-}
-
-function clearLoginForm() {
-  if (!loginForm || !photoPreview) {
+  reactionModalList.innerHTML = "";
+  if (!visible.length) {
+    reactionModalList.innerHTML = `<div class="reaction-empty">No reactions to show yet.</div>`;
     return;
   }
-  loginForm.reset();
-  photoPreview.innerHTML = "<span>No photo selected</span>";
-}
 
-function spawnReactionBurst(emoji) {
-  const burst = document.createElement("div");
-  burst.className = "reaction-burst";
-  burst.textContent = emoji;
-  document.body.appendChild(burst);
-  window.setTimeout(() => burst.remove(), 650);
-}
-
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
+  const fragment = document.createDocumentFragment();
+  visible.forEach((entry) => {
+    const row = document.createElement("article");
+    row.className = "reaction-person";
+    row.innerHTML = `
+      <div class="reaction-person-main">
+        <img src="${escapeHtml(entry.avatar_data_url)}" alt="Reaction avatar">
+        <div class="reaction-person-meta">
+          <strong>${escapeHtml(entry.display_name)}</strong>
+          <span>reacted with ${escapeHtml(entry.reaction_name)}</span>
+        </div>
+      </div>
+      <div class="reaction-person-icon">${reactionMeta[entry.reaction_name]?.emoji || "👍"}</div>
+    `;
+    fragment.appendChild(row);
   });
+
+  reactionModalList.appendChild(fragment);
 }
 
-async function upsertProfile(profile) {
-  return supabaseRequest("/rest/v1/factbook_profiles", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Prefer: "resolution=merge-duplicates,return=representation"
-    },
-    body: JSON.stringify(profile)
-  }, true);
+function closeReactionModal() {
+  reactionModal.classList.add("hidden");
 }
 
 async function ensureProfile() {
@@ -583,20 +398,22 @@ async function ensureProfile() {
     return;
   }
 
-  await upsertProfile({
-    id: state.user.id,
-    display_name: state.user.name,
-    password_hint: "",
-    avatar_data_url: state.user.avatar
-  });
+  await supabaseRequest("/rest/v1/factbook_profiles", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=minimal"
+    },
+    body: JSON.stringify({
+      id: state.user.id,
+      display_name: state.user.name,
+      avatar_data_url: state.user.avatar,
+      password_hint: ""
+    })
+  }, true);
 }
 
-async function getOwnReaction(userId) {
-  const rows = await supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&profile_id=eq.${encodeURIComponent(userId)}&select=reaction_name`);
-  return rows[0] ? rows[0].reaction_name : null;
-}
-
-async function createComment(userId, text) {
+async function createComment(text) {
   return supabaseRequest("/rest/v1/factbook_comments", {
     method: "POST",
     headers: {
@@ -606,7 +423,7 @@ async function createComment(userId, text) {
     body: JSON.stringify({
       id: createId(),
       post_id: POST_ID,
-      profile_id: userId,
+      profile_id: state.user.id,
       display_name: state.user.name,
       avatar_data_url: state.user.avatar,
       body_text: text.slice(0, 220)
@@ -614,43 +431,47 @@ async function createComment(userId, text) {
   }, true);
 }
 
-async function listComments() {
-  return supabaseRequest(`/rest/v1/factbook_comments?post_id=eq.${encodeURIComponent(POST_ID)}&select=id,profile_id,display_name,avatar_data_url,body_text,created_at&order=created_at.desc`);
-}
-
-async function deleteComment(commentId, userId) {
-  return supabaseRequest(`/rest/v1/factbook_comments?id=eq.${encodeURIComponent(commentId)}&profile_id=eq.${encodeURIComponent(userId)}`, {
+async function deleteComment(commentId) {
+  return supabaseRequest(`/rest/v1/factbook_comments?id=eq.${encodeURIComponent(commentId)}&profile_id=eq.${encodeURIComponent(state.user.id)}`, {
     method: "DELETE",
-    headers: {
-      Prefer: "return=minimal"
-    }
+    headers: { Prefer: "return=minimal" }
   }, true);
 }
 
-async function upsertReaction(userId, reaction) {
-  await ensureProfile();
-  return supabaseRequest(`/rest/v1/factbook_reactions?on_conflict=post_id,profile_id`, {
+async function upsertReaction(reaction) {
+  return supabaseRequest("/rest/v1/factbook_reactions?on_conflict=post_id,profile_id", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Prefer: "resolution=merge-duplicates,return=representation"
+      Prefer: "resolution=merge-duplicates,return=minimal"
     },
     body: JSON.stringify({
-      id: `${POST_ID}-${userId}`,
+      id: `${POST_ID}-${state.user.id}`,
       post_id: POST_ID,
-      profile_id: userId,
+      profile_id: state.user.id,
       reaction_name: reaction
     })
   }, true);
 }
 
-async function deleteReaction(userId) {
-  return supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&profile_id=eq.${encodeURIComponent(userId)}`, {
+async function deleteReaction() {
+  return supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&profile_id=eq.${encodeURIComponent(state.user.id)}`, {
     method: "DELETE",
-    headers: {
-      Prefer: "return=minimal"
-    }
+    headers: { Prefer: "return=minimal" }
   }, true);
+}
+
+async function getOwnReaction() {
+  if (!state.user) {
+    return null;
+  }
+
+  const rows = await supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&profile_id=eq.${encodeURIComponent(state.user.id)}&select=reaction_name`);
+  return rows[0] ? rows[0].reaction_name : null;
+}
+
+async function listComments() {
+  return supabaseRequest(`/rest/v1/factbook_comments?post_id=eq.${encodeURIComponent(POST_ID)}&select=id,profile_id,display_name,avatar_data_url,body_text,created_at&order=created_at.desc`);
 }
 
 async function listReactions() {
@@ -662,21 +483,22 @@ async function listReactions() {
 }
 
 async function listReactionPeople() {
-  const reactions = await supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&select=reaction_name,created_at,profile_id&order=created_at.desc`);
-  if (!reactions.length) {
+  const rows = await supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&select=reaction_name,profile_id,created_at&order=created_at.desc`);
+  if (!rows.length) {
     return [];
   }
 
-  const uniqueIds = [...new Set(reactions.map((row) => row.profile_id).filter(Boolean))];
-  const profiles = await supabaseRequest(`/rest/v1/factbook_profiles?id=in.(${uniqueIds.map((id) => `"${encodeURIComponent(id)}"`).join(",")})&select=id,display_name,avatar_data_url`);
+  const ids = [...new Set(rows.map((row) => row.profile_id))];
+  const idFilter = ids.map((id) => `"${id}"`).join(",");
+  const profiles = await supabaseRequest(`/rest/v1/factbook_profiles?id=in.(${idFilter})&select=id,display_name,avatar_data_url`);
   const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
 
-  return reactions.map((row) => {
+  return rows.map((row) => {
     const profile = profileMap.get(row.profile_id);
     return {
       reaction_name: row.reaction_name,
-      display_name: profile?.display_name || "Student",
-      avatar_data_url: profile?.avatar_data_url || "",
+      display_name: profile ? profile.display_name : "Student",
+      avatar_data_url: profile ? profile.avatar_data_url : "",
       created_at: row.created_at
     };
   });
@@ -703,29 +525,36 @@ async function supabaseRequest(path, options = {}, allowEmpty = false) {
   return text ? JSON.parse(text) : [];
 }
 
-function createId() {
-  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 9)}`;
+function clearLoginForm() {
+  loginForm.reset();
+  photoPreview.innerHTML = "<span>No photo selected</span>";
 }
 
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function spawnReactionBurst(emoji) {
+  const burst = document.createElement("div");
+  burst.className = "reaction-burst";
+  burst.textContent = emoji;
+  document.body.appendChild(burst);
+  window.setTimeout(() => burst.remove(), 650);
 }
 
 function pulseShareButton(label) {
-  if (!shareButton) {
-    return;
-  }
   const original = shareButton.innerHTML;
   shareButton.textContent = label;
   shareButton.style.color = "#1877f2";
   window.setTimeout(() => {
     shareButton.innerHTML = original;
     shareButton.style.color = "";
-  }, 1600);
+  }, 1500);
 }
 
 function copyWithTextarea(value) {
@@ -744,4 +573,16 @@ function forceScrollTop() {
   window.scrollTo(0, 0);
   document.documentElement.scrollTop = 0;
   document.body.scrollTop = 0;
+}
+
+function createId() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
