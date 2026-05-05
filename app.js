@@ -128,19 +128,19 @@ if (reactionPicker) {
       }
 
       const reaction = button.dataset.reaction;
-      if (state.selectedReaction === reaction) {
-        await deleteReaction(state.user.id);
-      } else {
-        await upsertReaction(state.user.id, reaction);
-      }
+    if (state.selectedReaction === reaction) {
+      await deleteReaction(state.user.id);
+    } else {
+      await upsertReaction(state.user.id, reaction);
+    }
 
-      if (reactWrap) {
-        reactWrap.classList.remove("open");
-      }
-      spawnReactionBurst(reactionMeta[reaction].emoji);
-      await refreshFeed();
-    });
+    if (reactWrap) {
+      reactWrap.classList.remove("open");
+    }
+    spawnReactionBurst(reactionMeta[reaction].emoji);
+    await refreshFeed().catch(() => {});
   });
+});
 }
 
 document.addEventListener("click", (event) => {
@@ -217,7 +217,7 @@ if (commentForm) {
     if (commentInput) {
       commentInput.value = "";
     }
-    await refreshFeed();
+    await refreshFeed().catch(() => {});
   });
 }
 
@@ -259,7 +259,7 @@ function showFeed() {
   if (topbarName) {
     topbarName.textContent = state.user.name;
   }
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  forceScrollTop();
 
   [topbarAvatar, postAvatar, composerAvatar].forEach((image) => {
     if (image) {
@@ -293,7 +293,7 @@ function resetSession(isInitialLoad = false) {
   if (authScreen) {
     authScreen.classList.remove("hidden");
   }
-  window.scrollTo({ top: 0, behavior: isInitialLoad ? "auto" : "smooth" });
+  forceScrollTop();
   clearLoginForm();
   if (reactWrap) {
     reactWrap.classList.remove("open");
@@ -662,13 +662,24 @@ async function listReactions() {
 }
 
 async function listReactionPeople() {
-  const rows = await supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&select=reaction_name,created_at,factbook_profiles(display_name,avatar_data_url)&order=created_at.desc`);
-  return rows.map((row) => ({
-    reaction_name: row.reaction_name,
-    display_name: row.factbook_profiles?.display_name || "Student",
-    avatar_data_url: row.factbook_profiles?.avatar_data_url || "",
-    created_at: row.created_at
-  }));
+  const reactions = await supabaseRequest(`/rest/v1/factbook_reactions?post_id=eq.${encodeURIComponent(POST_ID)}&select=reaction_name,created_at,profile_id&order=created_at.desc`);
+  if (!reactions.length) {
+    return [];
+  }
+
+  const uniqueIds = [...new Set(reactions.map((row) => row.profile_id).filter(Boolean))];
+  const profiles = await supabaseRequest(`/rest/v1/factbook_profiles?id=in.(${uniqueIds.map((id) => `"${encodeURIComponent(id)}"`).join(",")})&select=id,display_name,avatar_data_url`);
+  const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
+
+  return reactions.map((row) => {
+    const profile = profileMap.get(row.profile_id);
+    return {
+      reaction_name: row.reaction_name,
+      display_name: profile?.display_name || "Student",
+      avatar_data_url: profile?.avatar_data_url || "",
+      created_at: row.created_at
+    };
+  });
 }
 
 async function supabaseRequest(path, options = {}, allowEmpty = false) {
@@ -727,4 +738,10 @@ function copyWithTextarea(value) {
   helper.select();
   document.execCommand("copy");
   helper.remove();
+}
+
+function forceScrollTop() {
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
 }
