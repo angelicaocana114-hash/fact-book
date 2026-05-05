@@ -220,6 +220,7 @@ function showFeed() {
   authScreen.classList.add("hidden");
   feedScreen.classList.remove("hidden");
   topbarName.textContent = state.user.name;
+  window.scrollTo({ top: 0, behavior: "smooth" });
 
   [topbarAvatar, postAvatar, composerAvatar].forEach((image) => {
     image.src = state.user.avatar;
@@ -247,6 +248,7 @@ function resetSession(isInitialLoad = false) {
 
   feedScreen.classList.add("hidden");
   authScreen.classList.remove("hidden");
+  window.scrollTo({ top: 0, behavior: isInitialLoad ? "auto" : "smooth" });
   clearLoginForm();
   reactWrap.classList.remove("open");
   closeReactionModal();
