@@ -32,6 +32,9 @@ const reactionModalBackdrop = document.getElementById("reactionModalBackdrop");
 const reactionModalClose = document.getElementById("reactionModalClose");
 const reactionModalList = document.getElementById("reactionModalList");
 const reactionFilterRow = document.getElementById("reactionFilterRow");
+const supabaseClient = window.supabase
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
 const reactionMeta = {
   Like: { emoji: "👍", color: "#1877f2", className: "like" },
@@ -50,7 +53,8 @@ const state = {
   selectedReaction: null,
   reactionPeople: [],
   activeReactionFilter: "All",
-  refreshTimer: null
+  refreshTimer: null,
+  realtimeChannel: null
 };
 
 const fallbackStore = {
@@ -97,6 +101,7 @@ loginForm.addEventListener("submit", async (event) => {
   clearLoginForm();
   showFeed();
   await ensureProfile().catch(() => {});
+  setupRealtime();
   await refreshFeed().catch(() => {
     applyFallbackToState();
     renderReactionState();
@@ -263,6 +268,7 @@ function resetToLogin() {
     window.clearInterval(state.refreshTimer);
     state.refreshTimer = null;
   }
+  teardownRealtime();
 
   feedScreen.classList.add("hidden");
   authScreen.classList.remove("hidden");
@@ -429,6 +435,44 @@ function renderReactionModal() {
 
 function closeReactionModal() {
   reactionModal.classList.add("hidden");
+}
+
+function setupRealtime() {
+  if (!supabaseClient || state.realtimeChannel) {
+    return;
+  }
+
+  state.realtimeChannel = supabaseClient
+    .channel(`factbook-live-${POST_ID}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "factbook_comments" },
+      handleRealtimeChange
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "factbook_reactions" },
+      handleRealtimeChange
+    )
+    .subscribe();
+}
+
+function teardownRealtime() {
+  if (!supabaseClient || !state.realtimeChannel) {
+    return;
+  }
+
+  supabaseClient.removeChannel(state.realtimeChannel);
+  state.realtimeChannel = null;
+}
+
+function handleRealtimeChange() {
+  refreshFeed().catch(() => {
+    applyFallbackToState();
+    renderReactionState();
+    renderComments();
+    renderReactionModal();
+  });
 }
 
 function addFallbackComment(text) {
