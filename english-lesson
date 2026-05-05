@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">English learning poster</title>
+  <desc id="desc">A blue poster with the word English and study-related labels and icons.</desc>
+  <defs>
+    <pattern id="dots" width="34" height="34" patternUnits="userSpaceOnUse">
+      <circle cx="4" cy="4" r="1.4" fill="rgba(255,255,255,0.06)"/>
+      <circle cx="17" cy="18" r="1.2" fill="rgba(255,255,255,0.05)"/>
+      <circle cx="29" cy="7" r="1.1" fill="rgba(255,255,255,0.05)"/>
+    </pattern>
+    <style>
+      .bg { fill: #1f5ebd; }
+      .scribble { fill: url(#dots); }
+      .white { fill: none; stroke: #ffffff; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+      .orange { stroke: #d75f2d; fill: #d75f2d; }
+      .word { fill: #ffffff; font-family: 'Trebuchet MS', Arial, sans-serif; letter-spacing: 3px; }
+      .big { font-size: 122px; font-weight: 800; }
+      .mid { font-size: 54px; }
+      .small { font-size: 34px; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1200" height="760" rx="0"/>
+  <rect class="scribble" width="1200" height="760"/>
+
+  <text x="485" y="360" text-anchor="middle" class="word big">ENGLISH</text>
+  <text x="318" y="110" class="word mid" transform="rotate(-10 318 110)">SPEAKING</text>
+  <text x="836" y="120" class="word mid" transform="rotate(-6 836 120)">LISTENING</text>
+  <text x="48" y="470" class="word mid" transform="rotate(-3 48 470)">READING</text>
+  <text x="944" y="526" class="word mid" transform="rotate(-8 944 526)">WRITING</text>
+  <text x="883" y="398" class="word mid orange">LEARNING</text>
+
+  <path class="white" d="M53 102c22-28 52-39 87-33 32 6 49 27 62 56 6 14 3 27-14 35-24 12-47 8-71-4-17-9-33-9-53-3"/>
+  <path class="white" d="M180 111c16-12 35-16 56-10 24 7 44 27 56 56 4 10-2 20-15 24-19 5-39 0-59-15-15-12-28-18-42-18"/>
+  <circle cx="120" cy="111" r="12" fill="#d75f2d"/>
+
+  <path class="white" d="M692 136l16-44m34 29c18 13 30 33 28 54-3 28-28 48-56 46"/>
+  <path class="white" d="M865 154c16 17 23 37 22 58m-37-46c12 15 18 31 16 47m-34-36c8 10 11 21 10 32"/>
+  <path class="white" d="M1020 139l42 20m-19-46l-4 55 47 13"/>
+  <path class="white" d="M1051 155l56-31"/>
+
+  <path class="white" d="M114 642c42-9 79-6 111 10"/>
+  <path class="white" d="M218 636c31 2 63 16 93 40"/>
+  <path class="white" d="M80 596h95l-14 24H94z"/>
+  <path class="white" d="M98 565l22-36 23 36"/>
+  <path class="white" d="M333 594h157v56H333z"/>
+  <path class="white" d="M377 650v30m67-30v30"/>
+  <path class="white" d="M354 611c14 7 18 19 21 31m95-31c-13 6-20 18-24 31"/>
+
+  <path class="white" d="M662 578c10-15 25-24 41-23 17 1 30 12 39 31"/>
+  <circle cx="704" cy="540" r="12" fill="#ffffff"/>
+  <path class="white" d="M786 554l44 37m-44 0l44-37"/>
+  <path class="white" d="M782 638l66-52"/>
+  <path class="white" d="M850 561c26 10 43 29 50 55"/>
+  <path class="white" d="M972 569c11 11 18 24 20 40"/>
+  <path class="white" d="M1030 524c25-15 50-20 76-15"/>
+  <path class="white" d="M1116 541l39-14"/>
+
+  <path class="white" d="M555 420c22 17 52 21 88 14"/>
+  <path class="white" d="M627 384l112 63"/>
+  <path class="white" d="M719 460l18-23m-40 50l18-23"/>
+  <path class="white" d="M524 440l44-51"/>
+  <path class="white" d="M495 527c16-13 30-19 44-18"/>
+  <path class="white" d="M622 501c13 4 21 13 25 27"/>
+
+  <path class="white" d="M60 286h58l16 18 34-46"/>
+  <path class="white" d="M44 325c32-13 61-17 88-12"/>
+  <path class="white" d="M58 380c65 6 125-1 182-20"/>
+  <path class="orange white" d="M92 470l-7 40"/>
+  <path class="white" d="M246 464l58-4"/>
+
+  <rect x="990" y="240" width="118" height="86" rx="6" class="white"/>
+  <path class="white" d="M990 292h118"/>
+  <path class="white" d="M1048 326v32"/>
+  <path class="white" d="M952 208c20 23 40 36 61 39"/>
+  <path class="white" d="M1088 190c13 28 17 54 11 80"/>
+
+  <rect x="860" y="152" width="110" height="70" rx="20" fill="#d75f2d"/>
+  <polygon points="903,175 944,187 903,199" fill="#ffffff"/>
+</svg>
