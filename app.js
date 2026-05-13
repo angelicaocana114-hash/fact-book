@@ -54,7 +54,8 @@ const state = {
   reactionPeople: [],
   activeReactionFilter: "All",
   refreshTimer: null,
-  realtimeChannel: null
+  realtimeChannel: null,
+  pendingComments: []
 };
 
 const fallbackStore = {
@@ -169,13 +170,14 @@ commentForm.addEventListener("submit", async (event) => {
   }
 
   const optimisticComment = {
-    id: `optimistic-${createId()}`,
+    id: createId(),
     profile_id: state.user.id,
     display_name: state.user.name,
     avatar_data_url: state.user.avatar,
     body_text: text
   };
 
+  state.pendingComments.unshift(optimisticComment);
   state.comments.unshift(optimisticComment);
   renderComments();
   renderReactionState();
@@ -184,7 +186,7 @@ commentForm.addEventListener("submit", async (event) => {
 
   try {
     await ensureProfile();
-    await createComment(text);
+    await createComment(optimisticComment);
   } catch {
     replaceOptimisticCommentWithFallback(optimisticComment.id, text);
   }
@@ -230,7 +232,10 @@ async function refreshFeed() {
     getOwnReaction()
   ]);
 
-  state.comments = comments;
+  state.pendingComments = state.pendingComments.filter((pendingComment) => {
+    return !comments.some((comment) => comment.id === pendingComment.id);
+  });
+  state.comments = mergePendingComments(comments, state.pendingComments);
   state.reactions = reactions;
   state.reactionPeople = reactionPeople;
   state.selectedReaction = ownReaction;
@@ -268,6 +273,7 @@ function resetToLogin() {
   state.selectedReaction = null;
   state.reactionPeople = [];
   state.activeReactionFilter = "All";
+  state.pendingComments = [];
 
   if (state.refreshTimer) {
     window.clearInterval(state.refreshTimer);
@@ -560,6 +566,7 @@ function addFallbackComment(text) {
 }
 
 function replaceOptimisticCommentWithFallback(optimisticId, text) {
+  state.pendingComments = state.pendingComments.filter((comment) => comment.id !== optimisticId);
   state.comments = state.comments.filter((comment) => comment.id !== optimisticId);
   fallbackStore.comments.unshift({
     id: createId(),
@@ -636,12 +643,12 @@ async function createComment(text) {
       Prefer: "return=minimal"
     },
     body: JSON.stringify({
-      id: createId(),
+      id: text.id,
       post_id: POST_ID,
       profile_id: state.user.id,
       display_name: state.user.name,
       avatar_data_url: state.user.avatar,
-      body_text: text.slice(0, 220)
+      body_text: text.body_text.slice(0, 220)
     })
   }, true);
 }
@@ -797,4 +804,14 @@ function escapeHtml(value) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+function mergePendingComments(serverComments, pendingComments) {
+  const merged = [...serverComments];
+  pendingComments.forEach((pendingComment) => {
+    if (!merged.some((comment) => comment.id === pendingComment.id)) {
+      merged.unshift(pendingComment);
+    }
+  });
+  return merged;
 }
