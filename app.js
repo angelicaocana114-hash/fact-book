@@ -128,27 +128,21 @@ reactionPicker.querySelectorAll(".picker-react").forEach((button) => {
     }
 
     const reaction = button.dataset.reaction;
-    let usedFallback = false;
+    const previousSelectedReaction = state.selectedReaction;
+
+    applyOptimisticReaction(reaction);
+    reactWrap.classList.remove("open");
+    spawnReactionBurst(reactionMeta[reaction].emoji);
 
     try {
       await ensureProfile();
-      if (state.selectedReaction === reaction) {
+      if (previousSelectedReaction === reaction) {
         await deleteReaction();
       } else {
         await upsertReaction(reaction);
       }
-      await refreshFeed();
     } catch {
-      usedFallback = true;
-      toggleFallbackReaction(reaction);
-    }
-
-    reactWrap.classList.remove("open");
-    spawnReactionBurst(reactionMeta[reaction].emoji);
-
-    if (!usedFallback) {
-      renderReactionState();
-      renderReactionModal();
+      rollbackOptimisticReaction(previousSelectedReaction);
     }
   });
 });
@@ -185,14 +179,14 @@ commentForm.addEventListener("submit", async (event) => {
   state.comments.unshift(optimisticComment);
   renderComments();
   renderReactionState();
+  commentCount.textContent = `${state.comments.length} comment${state.comments.length === 1 ? "" : "s"}`;
   commentInput.value = "";
 
   try {
     await ensureProfile();
     await createComment(text);
-    await refreshFeed();
   } catch {
-    addFallbackComment(text);
+    replaceOptimisticCommentWithFallback(optimisticComment.id, text);
   }
 });
 
@@ -448,6 +442,72 @@ function closeReactionModal() {
   reactionModal.classList.add("hidden");
 }
 
+function applyOptimisticReaction(reaction) {
+  const current = state.selectedReaction;
+
+  if (current === reaction) {
+    state.selectedReaction = null;
+    if (state.reactions[current]) {
+      state.reactions[current] -= 1;
+      if (state.reactions[current] <= 0) {
+        delete state.reactions[current];
+      }
+    }
+    state.reactionPeople = state.reactionPeople.filter((entry) => !(entry.profile_id === state.user.id));
+  } else {
+    if (current && state.reactions[current]) {
+      state.reactions[current] -= 1;
+      if (state.reactions[current] <= 0) {
+        delete state.reactions[current];
+      }
+    }
+
+    state.selectedReaction = reaction;
+    state.reactions[reaction] = (state.reactions[reaction] || 0) + 1;
+    state.reactionPeople = state.reactionPeople.filter((entry) => entry.profile_id !== state.user.id);
+    state.reactionPeople.unshift({
+      profile_id: state.user.id,
+      reaction_name: reaction,
+      display_name: state.user.name,
+      avatar_data_url: state.user.avatar,
+      created_at: Date.now()
+    });
+  }
+
+  renderReactionState();
+  renderReactionModal();
+}
+
+function rollbackOptimisticReaction(previousSelectedReaction) {
+  if (previousSelectedReaction === state.selectedReaction) {
+    return;
+  }
+
+  if (state.selectedReaction && state.reactions[state.selectedReaction]) {
+    state.reactions[state.selectedReaction] -= 1;
+    if (state.reactions[state.selectedReaction] <= 0) {
+      delete state.reactions[state.selectedReaction];
+    }
+  }
+
+  state.reactionPeople = state.reactionPeople.filter((entry) => entry.profile_id !== state.user.id);
+  state.selectedReaction = previousSelectedReaction;
+
+  if (previousSelectedReaction) {
+    state.reactions[previousSelectedReaction] = (state.reactions[previousSelectedReaction] || 0) + 1;
+    state.reactionPeople.unshift({
+      profile_id: state.user.id,
+      reaction_name: previousSelectedReaction,
+      display_name: state.user.name,
+      avatar_data_url: state.user.avatar,
+      created_at: Date.now()
+    });
+  }
+
+  renderReactionState();
+  renderReactionModal();
+}
+
 function setupRealtime() {
   if (!supabaseClient || state.realtimeChannel) {
     return;
@@ -499,6 +559,21 @@ function addFallbackComment(text) {
   renderReactionState();
 }
 
+function replaceOptimisticCommentWithFallback(optimisticId, text) {
+  state.comments = state.comments.filter((comment) => comment.id !== optimisticId);
+  fallbackStore.comments.unshift({
+    id: createId(),
+    profile_id: state.user.id,
+    display_name: state.user.name,
+    avatar_data_url: state.user.avatar,
+    body_text: text
+  });
+  applyFallbackToState();
+  renderComments();
+  renderReactionState();
+  commentCount.textContent = `${state.comments.length} comment${state.comments.length === 1 ? "" : "s"}`;
+}
+
 function deleteFallbackComment(commentId) {
   fallbackStore.comments = fallbackStore.comments.filter((comment) => comment.id !== commentId);
   applyFallbackToState();
@@ -525,6 +600,7 @@ function applyFallbackToState() {
     return summary;
   }, {});
   state.reactionPeople = Object.entries(fallbackStore.reactionsByUser).map(([userId, reactionName]) => ({
+    profile_id: userId,
     reaction_name: reactionName,
     display_name: state.user && userId === state.user.id ? state.user.name : "Student",
     avatar_data_url: state.user && userId === state.user.id ? state.user.avatar : "",
@@ -631,6 +707,7 @@ async function listReactionPeople() {
 
   return rows.map((row) => {
     return {
+      profile_id: row.profile_id,
       reaction_name: row.reaction_name,
       display_name: row.display_name || "Student",
       avatar_data_url: row.avatar_data_url || "",
