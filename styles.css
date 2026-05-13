@@ -978,7 +978,13 @@ body.feed-mode .feed-screen {
   }
 
   .post-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .action-btn {
+    font-size: 0.98rem;
+    padding: 11px 6px;
   }
 
   .reaction-picker {
