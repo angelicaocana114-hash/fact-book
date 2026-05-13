@@ -600,7 +600,7 @@ function toggleFallbackReaction(reaction) {
 }
 
 function applyFallbackToState() {
-  state.comments = [...fallbackStore.comments];
+  state.comments = mergePendingComments(fallbackStore.comments, state.pendingComments);
   state.selectedReaction = state.user ? fallbackStore.reactionsByUser[state.user.id] || null : null;
   state.reactions = Object.values(fallbackStore.reactionsByUser).reduce((summary, reaction) => {
     summary[reaction] = (summary[reaction] || 0) + 1;
