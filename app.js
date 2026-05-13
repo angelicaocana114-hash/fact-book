@@ -174,14 +174,25 @@ commentForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  const optimisticComment = {
+    id: `optimistic-${createId()}`,
+    profile_id: state.user.id,
+    display_name: state.user.name,
+    avatar_data_url: state.user.avatar,
+    body_text: text
+  };
+
+  state.comments.unshift(optimisticComment);
+  renderComments();
+  renderReactionState();
+  commentInput.value = "";
+
   try {
     await ensureProfile();
     await createComment(text);
-    commentInput.value = "";
     await refreshFeed();
   } catch {
     addFallbackComment(text);
-    commentInput.value = "";
   }
 });
 
@@ -252,7 +263,7 @@ function showFeed() {
         renderComments();
         renderReactionModal();
       });
-    }, 4000);
+    }, 1000);
   }
 }
 
